@@ -1,26 +1,30 @@
 # Import standard modules
 import sys
 import pickle
+from DataPrepper import DataPrepper
 
 #===========================================================================#
 # TRAINING THE TEXT CLASSIFIER
 # Executes the training phase of the text classifier on documents given in
 # train-class-list. Saves the trained perceptron weights into the file
 # called 'model'.
+#
+# Run with command:
+#   python tc-train.py stopword-list train-class-list model
 #===========================================================================#
 class TextClassifier():
   def __init__(self):
-    print("TextClassifier instantiated!")
+    print("[TextClassifier] instantiated!")
+    self.DataPrepper = DataPrepper()
 
   def prepare(self):
-    print("Prepping dataset...")
+    print("[TextClassifier] Prepping dataset...")
 
   def train(self):
-    print("Training perceptron classifier...")
+    print("[TextClassifier] Training perceptron classifier...")
 
   def saveModel(self):
-    print("Saving model to disk...")
-
+    print("[TextClassifier] Saving model to disk...")
 
 #===========================================================================#
 # EXECUTING THE PROGRAM
@@ -37,6 +41,6 @@ model = TextClassifier()
 model.prepare()
 model.train()
 model.saveModel()
-# pickle.dump(model, open(PATH_TO_MODEL, 'wb'))
 
+# pickle.dump(model, open(PATH_TO_MODEL, 'wb'))
 print("=== FINISHED TRAINING...MODEL SAVED IN " + PATH_TO_MODEL + " ===")
