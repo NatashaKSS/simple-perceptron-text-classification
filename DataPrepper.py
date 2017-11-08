@@ -33,7 +33,20 @@ class DataPrepper():
 
     # convert each to feature vector and return them
 
-  def prep_training_set(self, pos_class_name):
+  #===========================================================================#
+  # CONSTRUCT THE DATASET
+  # Retrieves texts from training and test files
+  #===========================================================================#
+
+  """
+  Prepares the datasets we will need for training and testing
+
+  Splits our corpus into positive and negative train/test sets.
+
+  Returns a list of 2 pairs of tuples - one for train & test set, where each
+  tuple contains 2 dictionaries - one for positive & negatives
+  """
+  def prep_dataset(self, pos_class_name):
     # Get a list of all texts classified as positive first in FPC format
     positives_fpc = self.get_texts_for_class(pos_class_name)
 
@@ -52,10 +65,7 @@ class DataPrepper():
     train_negatives = negatives[0]
     test_negatives = negatives[1]
 
-    print(len(train_positives.keys()))
-    print(len(test_positives.keys()))
-    print(len(train_negatives.keys()))
-    print(len(test_negatives.keys()))
+    return [(train_positives, train_negatives), (test_positives, test_negatives)]
 
   """
   Reads the train-class-list or test-class-list file to retrieve all the
@@ -116,7 +126,7 @@ class DataPrepper():
   Retrieves the first N texts from a positive class
 
   Returns a tuple of a
-    1.) dictionary of N positive training entries the format:
+    1.) dictionary of N positive training entries,
     2.) dictionary of N positive testing entries the format:
 
     [
@@ -145,6 +155,19 @@ class DataPrepper():
 
     return (result_train, result_test)
 
+  """
+  Retrieves the first N / len(negative_classes) texts from each of the
+  specified list of negative classes
+
+  Returns a tuple of a
+    1.) dictionary of N negative training entries,
+    2.) dictionary of N negative testing entries the format:
+
+    [
+      { '[doc_name]' : 'some long string of text...' ... },
+      { '[doc_name]' : 'some long string of text...' ... }
+    ]
+  """
   def sample_N_neg_texts(self, negative_classes, N_train, N_test):
     result_train = {}
     result_test = {}
@@ -171,5 +194,4 @@ class DataPrepper():
           result_test[doc_name] = f.read()
         count[class_name] += 1
 
-    print(count)
     return (result_train, result_test)

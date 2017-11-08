@@ -25,7 +25,7 @@ class TextClassifier():
 
     # For all classes in class_names, train a perceptron
     for class_name in class_names:
-      if class_name == 'c1': # TODO: HARDCODED FOR TESTING
+      if class_name == 'c1': # TODO: HARDCODED FOR TESTING - REMEMBER TO ITERATE THROUGH EVERY CLASS
         train = self.DataPrepper.run(class_name)
 
   def train(self):
