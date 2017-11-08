@@ -32,6 +32,7 @@ class DataPrepper():
     # print(datasets[1][1]['60174']) # c2 test
 
     # construct vocabulary from datasets
+    doc_freq_map = self.setup_doc_freq(dict(datasets[0][0], **datasets[0][1]))
 
     # convert each to feature vector and return them
 
@@ -47,6 +48,24 @@ class DataPrepper():
           dict_class_documents[class_name] = \
             self.Tokenizer.tokenize(dict_class_documents[class_name])
     return datasets
+
+  #===========================================================================#
+  # CONSTRUCT VOCABULARY
+  # Set up data structures that hold the doc freq of every word in our corpus
+  #===========================================================================#
+  def setup_doc_freq(self, dataset):
+    df = {}
+    for class_name in dataset.keys():
+      for word in dataset[class_name]:
+        if word not in df.keys():
+          df[word] = [class_name]
+        else:
+          df[word].append(class_name)
+
+    for word in df.keys():
+      df[word] = len(df[word])
+
+    return df
 
   #===========================================================================#
   # CONSTRUCT THE DATASET
