@@ -6,8 +6,10 @@ from porter import PorterStemmer
 # Executes the text normalization phase
 #===========================================================================#
 class Tokenizer():
-  def __init__(self):
+  def __init__(self, PATH_TO_STOP_WORDS):
     print("[Tokenizer] Instantiated!")
+    self.PATH_TO_STOP_WORDS = PATH_TO_STOP_WORDS
+    self.STOP_WORDS = self.load_stopwords()
     self.PorterStemmer = PorterStemmer()
 
   def tokenize(self, sentence):
@@ -15,6 +17,9 @@ class Tokenizer():
 
   def stem(self, word):
     return self.PorterStemmer.stem(word, 0, len(word) - 1)
+
+  def remove_stopwords(self, tokens):
+    return list(filter(lambda tok: tok not in self.STOP_WORDS, tokens))
 
   #===========================================================================#
   # STRING MANIPULATION FUNCS
@@ -37,3 +42,11 @@ class Tokenizer():
   """
   def strip_newline(self, input_str):
     return input_str.strip('\n')
+
+  #===========================================================================#
+  # SETUP
+  #===========================================================================#
+  def load_stopwords(self):
+    f = open(self.PATH_TO_STOP_WORDS, 'r')
+    stopwords = f.read().splitlines()
+    return stopwords

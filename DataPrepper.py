@@ -7,9 +7,9 @@ from Tokenizer import Tokenizer
 #===========================================================================#
 class DataPrepper():
   def __init__(self, PATH_TO_STOP_WORDS, PATH_TO_TRAIN_CLASS_LIST):
-    self.Tokenizer = Tokenizer()
     self.PATH_TO_STOP_WORDS = PATH_TO_STOP_WORDS
     self.PATH_TO_TRAIN_CLASS_LIST = PATH_TO_TRAIN_CLASS_LIST
+    self.Tokenizer = Tokenizer(self.PATH_TO_STOP_WORDS)
 
     # Set up class-specific constants
     self.fpc = self.load_paths_to_training_text() # F.P.C means filename_path_classnames
@@ -22,9 +22,10 @@ class DataPrepper():
   """
   def run(self, class_name):
     print("[DataPrepper] Running...")
-    train_data = self.prep_training_set(class_name)
+    datasets = self.prep_dataset(class_name)
 
     # text normalization: stop word removal & stemming
+    print(self.Tokenizer.remove_stopwords(['hello', 'and', 'flamingo', 'the', 'training']))
 
     # construct vocabulary from filename_path_classnames
 
