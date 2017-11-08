@@ -10,15 +10,23 @@ from DataPrepper import DataPrepper
 # called 'model'.
 #
 # Run with command:
-#   python tc-train.py stopword-list train-class-list model
+#   python3 tc-train.py stopword-list train-class-list model
 #===========================================================================#
 class TextClassifier():
   def __init__(self):
     print("[TextClassifier] instantiated!")
-    self.DataPrepper = DataPrepper()
+    self.DataPrepper = DataPrepper(PATH_TO_STOP_WORDS, PATH_TO_TRAIN_CLASS_LIST)
 
   def prepare(self):
     print("[TextClassifier] Prepping dataset...")
+
+    # Get all class names to make a perceptron classifier for
+    class_names = self.DataPrepper.class_names
+
+    # For all classes in class_names, train a perceptron
+    for class_name in class_names:
+      if class_name == 'c1': # TODO: HARDCODED FOR TESTING
+        train = self.DataPrepper.run(class_name)
 
   def train(self):
     print("[TextClassifier] Training perceptron classifier...")
