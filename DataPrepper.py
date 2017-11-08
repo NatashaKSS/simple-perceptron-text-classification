@@ -33,8 +33,6 @@ class DataPrepper():
 
     # construct vocabulary from datasets
 
-    # sample len(positives) from other len(classes) - 1 classes
-
     # convert each to feature vector and return them
 
   #===========================================================================#

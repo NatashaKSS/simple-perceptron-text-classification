@@ -1,6 +1,8 @@
 # Import necessary modules
 from porter import PorterStemmer
 
+PUNCTUATIONS = '!"#$%&\'()*+,-./:;<=>?@[\]^_`{|}~'
+
 #===========================================================================#
 # PREPARING THE DATASET FOR TEXT CLASSIFICATION
 # Executes the text normalization phase
@@ -14,16 +16,24 @@ class Tokenizer():
 
   """
   Tokenizes on these rules:
-    SPLIT ON WHITESPACE
-    STRIP WHITESPACES * NEWLINES DANGLING IN BETWEEN A TOKEN
-    STEMS EVERY TOKEN
-    REMOVES STOP WORDS
+    SPLIT INTO TOKENS
+    STRIP TOKENS' WHITESPACES, NEWLINES AND PUNCTUATIONS DANGLING IN BETWEEN
+    STEM EVERY TOKEN
+    REMOVE TOKEN IF IS STOP WORD
 
   Returns list of text normalized tokens
   """
   def tokenize(self, input_str):
-    result = input_str.split(' ')
-    result = [self.stem(token.strip(' ').strip('\n')) for token in result if len(token) > 0 and not self.is_stopword(token)]
+    result = []
+    input_str_list = input_str.split()
+    for token in input_str_list:
+      result_tok = token.strip(' \n')
+      result_tok = token.strip(PUNCTUATIONS)
+
+      if len(result_tok) > 0 and not self.is_stopword(result_tok):
+        result_tok = self.stem(result_tok)
+        result.append(result_tok)
+
     return result
 
   def stem(self, word):
