@@ -343,9 +343,7 @@ class PorterStemmer:
         self.step5()
         return self.b[self.k0:self.k+1]
 
-# Uncommented since this Python module will be called and not run on the
-# command line
-#
+# Uncommented since this Python class will be called and not run on the cmd line
 # if __name__ == '__main__':
 #     p = PorterStemmer()
 #     if len(sys.argv) > 1:
@@ -365,5 +363,5 @@ class PorterStemmer:
 #                             output += p.stem(word, 0,len(word)-1)
 #                             word = ''
 #                         output += c.lower()
-#                 print output,
+#                 print(output),
 #             infile.close()
