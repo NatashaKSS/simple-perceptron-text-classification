@@ -12,14 +12,28 @@ class Tokenizer():
     self.STOP_WORDS = self.load_stopwords()
     self.PorterStemmer = PorterStemmer()
 
-  def tokenize(self, sentence):
-    print("[Tokenizer] Running...")
+  """
+  Tokenizes on these rules:
+    SPLIT ON WHITESPACE
+    STRIP WHITESPACES * NEWLINES DANGLING IN BETWEEN A TOKEN
+    STEMS EVERY TOKEN
+    REMOVES STOP WORDS
+
+  Returns list of text normalized tokens
+  """
+  def tokenize(self, input_str):
+    result = input_str.split(' ')
+    result = [self.stem(token.strip(' ').strip('\n')) for token in result if len(token) > 0 and not self.is_stopword(token)]
+    return result
 
   def stem(self, word):
     return self.PorterStemmer.stem(word, 0, len(word) - 1)
 
   def remove_stopwords(self, tokens):
     return list(filter(lambda tok: tok not in self.STOP_WORDS, tokens))
+
+  def is_stopword(self, token):
+    return token in self.STOP_WORDS
 
   #===========================================================================#
   # STRING MANIPULATION FUNCS

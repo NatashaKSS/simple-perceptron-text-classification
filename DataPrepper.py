@@ -24,14 +24,31 @@ class DataPrepper():
     print("[DataPrepper] Running...")
     datasets = self.prep_dataset(class_name)
 
-    # text normalization: stop word removal & stemming
-    print(self.Tokenizer.remove_stopwords(['hello', 'and', 'flamingo', 'the', 'training']))
+    # text normalization: tokenization, stop word removal & stemming
+    datasets = self.tokenize_datasets(datasets)
+    # print(datasets[0][0]['37261']) # c1 train
+    # print(datasets[0][1]['60140']) # c2 train
+    # print(datasets[1][0]['38677']) # c1 test
+    # print(datasets[1][1]['60174']) # c2 test
 
-    # construct vocabulary from filename_path_classnames
+    # construct vocabulary from datasets
 
     # sample len(positives) from other len(classes) - 1 classes
 
     # convert each to feature vector and return them
+
+  #===========================================================================#
+  # TEXT NORMALIZATION
+  # Functions to facilitate text normalization for all datasets
+  #===========================================================================#
+  def tokenize_datasets(self, datasets):
+    for i in range(len(datasets)):
+      for j in range(len(datasets[i])):
+        dict_class_documents = datasets[i][j]
+        for class_name in dict_class_documents.keys():
+          dict_class_documents[class_name] = \
+            self.Tokenizer.tokenize(dict_class_documents[class_name])
+    return datasets
 
   #===========================================================================#
   # CONSTRUCT THE DATASET
