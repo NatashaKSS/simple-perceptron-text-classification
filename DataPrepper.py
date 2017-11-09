@@ -44,9 +44,9 @@ class DataPrepper():
     for i in range(len(datasets)):
       for j in range(len(datasets[i])):
         dict_class_documents = datasets[i][j]
-        for class_name in dict_class_documents.keys():
-          dict_class_documents[class_name] = \
-            self.Tokenizer.tokenize(dict_class_documents[class_name])
+        for doc_name in dict_class_documents.keys():
+          dict_class_documents[doc_name] = \
+            self.Tokenizer.tokenize(dict_class_documents[doc_name])
     return datasets
 
   #===========================================================================#
@@ -55,12 +55,14 @@ class DataPrepper():
   #===========================================================================#
   def setup_doc_freq(self, dataset):
     df = {}
-    for class_name in dataset.keys():
-      for word in dataset[class_name]:
+
+    for doc_name in dataset.keys():
+      for word in dataset[doc_name]:
         if word not in df.keys():
-          df[word] = [class_name]
+          df[word] = [doc_name]
         else:
-          df[word].append(class_name)
+          if doc_name not in df[word]:
+            df[word].append(doc_name)
 
     for word in df.keys():
       df[word] = len(df[word])
@@ -78,7 +80,7 @@ class DataPrepper():
   Splits our corpus into positive and negative train/test sets.
 
   Returns a list of 2 pairs of tuples - one for train & test set, where each
-  tuple contains 2 dictionaries - one for positive & negatives
+  tuple contains 2 dictionaries - one for positives & negatives
   """
   def prep_dataset(self, pos_class_name):
     # Get a list of all texts classified as positive first in FPC format
