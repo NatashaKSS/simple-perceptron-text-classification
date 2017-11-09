@@ -1,3 +1,7 @@
+# Import standard modules
+import sys
+from math import log
+
 # Import necessary modules
 from Tokenizer import Tokenizer
 
@@ -33,8 +37,17 @@ class DataPrepper():
 
     # construct vocabulary from datasets
     doc_freq_map = self.setup_doc_freq(dict(datasets[0][0], **datasets[0][1]))
+    vocab = list(doc_freq_map.keys()) # list of all the words in our corpus
 
     # convert each to feature vector and return them
+    f_vector_pos_train = self.setup_feature_vectors(vocab, datasets[0][0])
+    f_vector_neg_train = self.setup_feature_vectors(vocab, datasets[0][1])
+    f_vector_pos_test = self.setup_feature_vectors(vocab, datasets[1][0])
+    f_vector_neg_test = self.setup_feature_vectors(vocab, datasets[1][1])
+    print(len(f_vector_pos_train))
+    print(len(f_vector_neg_train))
+    print(len(f_vector_pos_test))
+    print(len(f_vector_neg_test))
 
   #===========================================================================#
   # TEXT NORMALIZATION
@@ -68,6 +81,36 @@ class DataPrepper():
       df[word] = len(df[word])
 
     return df
+
+  #===========================================================================#
+  # CONSTRUCT FEATURE VECTORS FOR EACH CLASS
+  # Compute feature vectors representing each class' text document
+  #===========================================================================#
+  def setup_feature_vectors(self, vocab, dataset):
+    fea_datasets = []
+    dataset_f_vectors = []
+
+    for doc_name in dataset.keys():
+      doc = dataset[doc_name]
+      DOC_N = len(doc)
+      f_vector = [0] * len(vocab)
+
+      # Count word occurrence with reference to vocab
+      for word in doc:
+        if word in vocab:
+          f_vector[vocab.index(word)] += 1
+
+      # log normalize term frequencies
+      # all values will be negative but the Highest score still implies that a term occurred the most often.
+      # Lowest score is about -708.3964185322641, if that term never occurred.
+      for k in range(len(f_vector)):
+        value = float(f_vector[k]) / float(DOC_N)
+        f_vector[k] = log(value) if value != 0.0 else log(sys.float_info.min)
+
+      # Finished processing a feature vector of a doc
+      dataset_f_vectors.append(f_vector)
+
+    return dataset_f_vectors
 
   #===========================================================================#
   # CONSTRUCT THE DATASET
