@@ -8,7 +8,48 @@ class PerceptronClassifier():
 
   def train(self, train_vectors):
     print("[PerceptronClassifier] Training...")
-    print(train_vectors)
+    x = self.setup_feature_vectors(train_vectors)
+    w = self.learn_weights(x, 0.01, 5)
+    print(w)
+    print(len(w), len(x[0]))
+    print(self.classify(x[0], w))
+    print(self.classify(x[456], w))
 
-  def classify(self):
-    print("[PerceptronClassifier] Classifying testset...")
+  def learn_weights(self, x, learning_rate, num_epochs):
+    w = [0] * len(x[0])
+    for epoch in range(num_epochs):
+      for feature_vector in x:
+        y = self.classify(feature_vector, w)
+        error = feature_vector[-1] - y
+
+        # Update bias and weights
+        w[0] = w[0] + learning_rate * error
+        for i in range(len(feature_vector) - 1):
+          w[i + 1] = w[i + 1] + learning_rate * feature_vector[i] * error
+      print('epoch=%d, lrate=%.3f' % (epoch, learning_rate))
+    return w
+
+  def classify(self, f_vector, w):
+    activation = w[0]
+    for i in range(len(f_vector) - 1):
+      activation += w[i + 1] * f_vector[i]
+
+    if activation >= 0.0:
+      return 1.0
+    else:
+      return 0.0
+
+  #===========================================================================#
+  # A bit of pre-processing here to get feature vectors into the correct shape
+  #===========================================================================#
+  def setup_feature_vectors(self, train_vectors):
+    pos_feature_vectors = train_vectors[0]
+    neg_feature_vectors = train_vectors[1]
+
+    for f_vector_pos in pos_feature_vectors:
+      f_vector_pos.append(1.0)
+
+    for f_vector_neg in neg_feature_vectors:
+      f_vector_neg.append(0.0)
+
+    return pos_feature_vectors + neg_feature_vectors

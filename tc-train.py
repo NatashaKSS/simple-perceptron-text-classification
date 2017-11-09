@@ -28,12 +28,11 @@ class TextClassifier():
     # For all classes in class_names, train a perceptron
     for class_name in class_names:
       if class_name == 'c1': # TODO: HARDCODED FOR TESTING - REMEMBER TO ITERATE THROUGH EVERY CLASS
-        # feature_vectors = self.DataPrepper.run(class_name)
-        # train_vectors = feature_vectors[0] # [f_vector_pos_train, f_vector_neg_train]
-        # test_vectors = feature_vectors[1]  # [f_vector_pos_test, f_vector_neg_test]
+        feature_vectors = self.DataPrepper.run(class_name)
+        train_vectors = feature_vectors[0] # [f_vector_pos_train, f_vector_neg_train]
+        test_vectors = feature_vectors[1]  # [f_vector_pos_test, f_vector_neg_test]
 
-        # self.train(train_vectors)
-        self.train([[ [1,2,3], [2,4,6] ], [ [6,7,8], [8,9,10] ]])
+        self.train(train_vectors)
 
   def train(self, train_vectors):
     print("[TextClassifier] Training perceptron classifier...")
