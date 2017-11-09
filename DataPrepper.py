@@ -1,6 +1,7 @@
 # Import standard modules
 import sys
 from math import log
+from math import pow
 
 # Import necessary modules
 from Tokenizer import Tokenizer
@@ -38,16 +39,18 @@ class DataPrepper():
     # construct vocabulary from datasets
     doc_freq_map = self.setup_doc_freq(dict(datasets[0][0], **datasets[0][1]))
     vocab = list(doc_freq_map.keys()) # list of all the words in our corpus
+    chisq_vocab = self.get_chisq_vocab(datasets[0], 1.2)
+    print(len(vocab), len(chisq_vocab))
 
     # convert each to feature vector and return them
-    f_vector_pos_train = self.setup_feature_vectors(vocab, datasets[0][0])
-    f_vector_neg_train = self.setup_feature_vectors(vocab, datasets[0][1])
-    f_vector_pos_test = self.setup_feature_vectors(vocab, datasets[1][0])
-    f_vector_neg_test = self.setup_feature_vectors(vocab, datasets[1][1])
-    print(len(f_vector_pos_train))
-    print(len(f_vector_neg_train))
-    print(len(f_vector_pos_test))
-    print(len(f_vector_neg_test))
+    # f_vector_pos_train = self.setup_feature_vectors(vocab, datasets[0][0])
+    # f_vector_neg_train = self.setup_feature_vectors(vocab, datasets[0][1])
+    # f_vector_pos_test = self.setup_feature_vectors(vocab, datasets[1][0])
+    # f_vector_neg_test = self.setup_feature_vectors(vocab, datasets[1][1])
+    # print(len(f_vector_pos_train))
+    # print(len(f_vector_neg_train))
+    # print(len(f_vector_pos_test))
+    # print(len(f_vector_neg_test))
 
   #===========================================================================#
   # TEXT NORMALIZATION
@@ -63,9 +66,16 @@ class DataPrepper():
     return datasets
 
   #===========================================================================#
-  # CONSTRUCT VOCABULARY
-  # Set up data structures that hold the doc freq of every word in our corpus
+  # CONSTRUCT VOCABULARY & DOC FREQ MAP
+  # Set up data structures that hold the vocab and doc freq of every word
   #===========================================================================#
+  """
+  Sets up the doc frequency of words in a given dataset.
+  A dataset is a dictionary of this format: { 'doc_name' :  ['Here', 'are', ...] }
+
+  Returns a dictionary containing the document frequency of all words in the
+  chosen dataset in this format: { 'Here' : 12, 'are' : 56 ... }
+  """
   def setup_doc_freq(self, dataset):
     df = {}
 
@@ -81,6 +91,46 @@ class DataPrepper():
       df[word] = len(df[word])
 
     return df
+
+  def get_chisq_vocab(self, datasets_train, threshold):
+    data_pos = datasets_train[0]
+    N_pos = len(data_pos.keys())
+    data_neg = datasets_train[1]
+    N_neg = len(data_neg.keys())
+
+    data_pos_doc_freq = self.setup_doc_freq(data_pos)
+    data_pos_vocab = list(data_pos_doc_freq.keys())
+    data_neg_doc_freq = self.setup_doc_freq(data_neg)
+    data_neg_vocab = list(data_neg_doc_freq.keys())
+
+    feature_selected_vocab = []
+    for word in (data_pos_vocab + data_neg_vocab):
+      # no. of training docs that:
+      N_00 = 0 #  in negative class, do not contain w
+      N_01 = 0 #  in positive class, do not contain w
+      N_10 = 0 #  in negative class,        contain w
+      N_11 = 0 #  in positive class,        contain w
+
+      pos_word = data_pos_doc_freq[word] if word in data_pos_vocab else 0
+      neg_word = data_neg_doc_freq[word] if word in data_neg_vocab else 0
+
+      N_00 = float(N_neg - neg_word)
+      N_01 = float(N_pos - pos_word)
+      N_10 = float(neg_word)
+      N_11 = float(pos_word)
+
+      if not (N_10 == N_neg or N_11 == N_pos):
+        chisq = ((N_11 + N_10 + N_01 + N_00) * pow(N_11 * N_00 - N_10 * N_01, 2)) / \
+                ((N_11 + N_01) * (N_11 + N_10) * (N_10 + N_00) * (N_01 + N_00))
+        if chisq > threshold:
+          feature_selected_vocab.append(word)
+      else:
+        chisq = 0
+
+      # FOR TESTING
+      # feature_selected_vocab.append([word, chisq, N_11, N_10])
+
+    return feature_selected_vocab
 
   #===========================================================================#
   # CONSTRUCT FEATURE VECTORS FOR EACH CLASS
