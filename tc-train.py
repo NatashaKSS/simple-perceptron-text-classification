@@ -2,6 +2,7 @@
 import sys
 import pickle
 from DataPrepper import DataPrepper
+from PerceptronClassifier import PerceptronClassifier
 
 #===========================================================================#
 # TRAINING THE TEXT CLASSIFIER
@@ -16,8 +17,9 @@ class TextClassifier():
   def __init__(self):
     print("[TextClassifier] instantiated!")
     self.DataPrepper = DataPrepper(PATH_TO_STOP_WORDS, PATH_TO_TRAIN_CLASS_LIST)
+    self.PerceptronClassifier = PerceptronClassifier()
 
-  def prepare(self):
+  def build(self):
     print("[TextClassifier] Prepping dataset...")
 
     # Get all class names to make a perceptron classifier for
@@ -26,10 +28,16 @@ class TextClassifier():
     # For all classes in class_names, train a perceptron
     for class_name in class_names:
       if class_name == 'c1': # TODO: HARDCODED FOR TESTING - REMEMBER TO ITERATE THROUGH EVERY CLASS
-        train = self.DataPrepper.run(class_name)
+        # feature_vectors = self.DataPrepper.run(class_name)
+        # train_vectors = feature_vectors[0] # [f_vector_pos_train, f_vector_neg_train]
+        # test_vectors = feature_vectors[1]  # [f_vector_pos_test, f_vector_neg_test]
 
-  def train(self):
+        # self.train(train_vectors)
+        self.train([[ [1,2,3], [2,4,6] ], [ [6,7,8], [8,9,10] ]])
+
+  def train(self, train_vectors):
     print("[TextClassifier] Training perceptron classifier...")
+    self.PerceptronClassifier.train(train_vectors)
 
   def saveModel(self):
     print("[TextClassifier] Saving model to disk...")
@@ -46,8 +54,7 @@ print("PATH_TO_STOP_WORDS:", PATH_TO_STOP_WORDS,
       ", PATH_TO_MODEL", PATH_TO_MODEL)
 
 model = TextClassifier()
-model.prepare()
-model.train()
+model.build()
 model.saveModel()
 
 # pickle.dump(model, open(PATH_TO_MODEL, 'wb'))
