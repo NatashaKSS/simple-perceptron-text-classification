@@ -23,7 +23,8 @@ class DataPrepper():
     print("[DataPrepper] Instantiated!")
 
   """
-  Train the classifier for the class `pos_class`
+  Processes the dataset and returns the feature vectors of each of the training
+  and test sets (positively and negatively classified)
   """
   def run(self, class_name):
     print("[DataPrepper] Running...")
@@ -40,17 +41,25 @@ class DataPrepper():
     doc_freq_map = self.setup_doc_freq(dict(datasets[0][0], **datasets[0][1]))
     vocab = list(doc_freq_map.keys()) # list of all the words in our corpus
     chisq_vocab = self.get_chisq_vocab(datasets[0], 1.2)
-    print(len(vocab), len(chisq_vocab))
+    print("Num of words in vocabs:", len(vocab), len(chisq_vocab ))
 
     # convert each to feature vector and return them
-    # f_vector_pos_train = self.setup_feature_vectors(vocab, datasets[0][0])
-    # f_vector_neg_train = self.setup_feature_vectors(vocab, datasets[0][1])
-    # f_vector_pos_test = self.setup_feature_vectors(vocab, datasets[1][0])
-    # f_vector_neg_test = self.setup_feature_vectors(vocab, datasets[1][1])
-    # print(len(f_vector_pos_train))
-    # print(len(f_vector_neg_train))
-    # print(len(f_vector_pos_test))
-    # print(len(f_vector_neg_test))
+    f_vector_pos_train = self.setup_feature_vectors(chisq_vocab, datasets[0][0])
+    f_vector_neg_train = self.setup_feature_vectors(chisq_vocab, datasets[0][1])
+    f_vector_pos_test = self.setup_feature_vectors(chisq_vocab, datasets[1][0])
+    f_vector_neg_test = self.setup_feature_vectors(chisq_vocab, datasets[1][1])
+
+    # Test and check what are the values that are not 0
+    # for i in range(len(f_vector_pos_train[0])):
+    #   if f_vector_pos_train[0][i] > -700:
+    #     print(chisq_vocab[i], f_vector_pos_train[0][i])
+
+    print(len(f_vector_pos_train))
+    print(len(f_vector_neg_train))
+    print(len(f_vector_pos_test))
+    print(len(f_vector_neg_test))
+
+    return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test]]
 
   #===========================================================================#
   # TEXT NORMALIZATION
