@@ -34,7 +34,7 @@ class DataPrepper():
   """
   def run(self, class_name):
     print("[DataPrepper] Running...")
-
+    print("[DataPrepper] Prepping datasets...")
     datasets = self.prep_dataset(class_name)
     train_pos_doc_map = datasets[0][0]
     train_neg_doc_map = datasets[0][1]
@@ -44,28 +44,35 @@ class DataPrepper():
       (len(train_pos_doc_map), len(train_neg_doc_map), len(test_pos_doc_map), len(test_neg_doc_map)))
 
     # Text normalization: tokenization, stop word removal & stemming
+    print("[DataPrepper] Tokenizing datasets...")
     datasets = self.tokenize_datasets(datasets)
 
     # Construct vocabulary from datasets
-    vocab_pos = self.setup_vocab(train_pos_doc_map, 2)
-    vocab_neg = self.setup_vocab(train_neg_doc_map, 2)
+    print("[DataPrepper] Setting up positive & negative vocabs...")
+    vocab_pos = self.setup_vocab(train_pos_doc_map, 5)
+    vocab_neg = self.setup_vocab(train_neg_doc_map, 5)
+
+    print("[DataPrepper] Setting up chi-squared vocab...")
     chisq_vocab = self.get_chisq_vocab_NEW(vocab_pos, vocab_neg, datasets[0][0], datasets[0][1], 10)
     print("Num of words in vocabs: +Vocab=%d and -Vocab=%d and Chisq_Vocab=%d" %
       (len(vocab_pos), len(vocab_neg), len(chisq_vocab)))
 
     # convert each to feature vector and return them
+    print("[DataPrepper] Setting up pos_train feature vector...")
     f_vector_pos_train = self.setup_feature_vectors(chisq_vocab, datasets[0][0])
+
+    print("[DataPrepper] Setting up neg_train feature vector...")
     f_vector_neg_train = self.setup_feature_vectors(chisq_vocab, datasets[0][1])
+
+    print("[DataPrepper] Setting up pos_test feature vector...")
     f_vector_pos_test  = self.setup_feature_vectors(chisq_vocab, datasets[1][0])
+
+    print("[DataPrepper] Setting up pos_test feature vector...")
     f_vector_neg_test  = self.setup_feature_vectors(chisq_vocab, datasets[1][1])
 
-    print(f_vector_pos_train[0])
-    print('-------------------------------')
-    print(f_vector_pos_train[10])
+    print(f_vector_pos_train[5])
     print('--------------NEG--------------')
-    print(f_vector_neg_train[301])
-    print('-------------------------------')
-    print(f_vector_neg_train[315])
+    print(f_vector_neg_train[int(len(train_neg_doc_map) / 2)])
 
     return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test]]
 
@@ -123,7 +130,6 @@ class DataPrepper():
     return df
 
   def get_chisq_vocab_NEW(self, data_pos_vocab, data_neg_vocab, docs_pos, docs_neg, threshold):
-    print('Computing chi-squared vocab...')
     combined_vocabs = self.union_vocabs(data_pos_vocab, data_neg_vocab)
     N_pos_docs = len(docs_pos.keys())
     N_neg_docs = len(docs_neg.keys())
