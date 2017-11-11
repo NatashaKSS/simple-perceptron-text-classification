@@ -26,11 +26,12 @@ class Tokenizer():
   """
   def tokenize(self, input_str):
     result = []
-    input_str_list = input_str.split()
+    # input_str_list = input_str.split()
+    input_str_list = re.split('\W+', input_str)
 
     for token in input_str_list:
-      result_tok = token.strip(' \n')
-      result_tok = token.strip(PUNCTUATIONS)
+      result_tok = token.lower()
+      # result_tok = token.strip(PUNCTUATIONS)
 
       if len(result_tok) > 0 and \
          not self.is_stopword(result_tok) and \
