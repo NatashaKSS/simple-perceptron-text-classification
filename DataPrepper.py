@@ -34,23 +34,24 @@ class DataPrepper():
   """
   def run(self, class_name):
     print("[DataPrepper] Running...")
+
     datasets = self.prep_dataset(class_name)
+    train_pos_doc_map = datasets[0][0]
+    train_neg_doc_map = datasets[0][1]
+    test_pos_doc_map = datasets[1][0]
+    test_neg_doc_map = datasets[1][1]
+    print("Sample sizes - Train: %d positives + %d negatives, Test: %d positives + %d negatives" %
+      (len(train_pos_doc_map), len(train_neg_doc_map), len(test_pos_doc_map), len(test_neg_doc_map)))
 
-    # text normalization: tokenization, stop word removal & stemming
+    # Text normalization: tokenization, stop word removal & stemming
     datasets = self.tokenize_datasets(datasets)
-    # print(datasets[0][0]['37261']) # c1 train
-    # print(datasets[0][1]['60140']) # c2 train
-    # print(datasets[1][0]['38677']) # c1 test
-    # print(datasets[1][1]['60174']) # c2 test
 
-    # construct vocabulary from datasets
-    doc_freq_map = self.setup_doc_freq(dict(datasets[0][0], **datasets[0][1]))
-    self.print_counts_df(doc_freq_map)
-    # self.print_highest_df(doc_freq_map)
-
-    vocab = list(doc_freq_map.keys()) # list of all the words in our corpus
-    chisq_vocab = self.get_chisq_vocab(datasets[0], 5)
-    print("Num of words in vocabs: Vocab=%d and Chisq_Vocab=%d" % (len(vocab), len(chisq_vocab)))
+    # Construct vocabulary from datasets
+    vocab_pos = self.setup_vocab(train_pos_doc_map, 2)
+    vocab_neg = self.setup_vocab(train_neg_doc_map, 2)
+    chisq_vocab = self.get_chisq_vocab_NEW(vocab_pos, vocab_neg, datasets[0][0], datasets[0][1], 10)
+    print("Num of words in vocabs: +Vocab=%d and -Vocab=%d and Chisq_Vocab=%d" %
+      (len(vocab_pos), len(vocab_neg), len(chisq_vocab)))
 
     # convert each to feature vector and return them
     f_vector_pos_train = self.setup_feature_vectors(chisq_vocab, datasets[0][0])
@@ -58,26 +59,15 @@ class DataPrepper():
     f_vector_pos_test  = self.setup_feature_vectors(chisq_vocab, datasets[1][0])
     f_vector_neg_test  = self.setup_feature_vectors(chisq_vocab, datasets[1][1])
 
-    # print(f_vector_pos_train[:5])
+    print(f_vector_pos_train[0])
+    print('-------------------------------')
+    print(f_vector_pos_train[10])
+    print('--------------NEG--------------')
+    print(f_vector_neg_train[301])
+    print('-------------------------------')
+    print(f_vector_neg_train[315])
 
     return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test]]
-
-  def print_counts_df(self, doc_freq_map):
-    count_num_1 = 0
-    count_num_5 = 0
-    count_num_10 = 0
-    for k in doc_freq_map.keys():
-      if doc_freq_map[k] <= 1:
-        count_num_1 += 1
-      elif doc_freq_map[k] > 1 and doc_freq_map[k] <= 5:
-        count_num_5 += 1
-      else:
-        count_num_10 += 1
-    print('N<=1:', count_num_1, ' 1<N<=5:', count_num_5, ' N>10:', count_num_10)
-
-  def print_highest_df(self, doc_freq_map):
-    for w in sorted(doc_freq_map, key=doc_freq_map.get, reverse=True):
-      print(w, doc_freq_map[w])
 
   #===========================================================================#
   # TEXT NORMALIZATION
@@ -97,6 +87,21 @@ class DataPrepper():
   # CONSTRUCT VOCABULARY & DOC FREQ MAP
   # Set up data structures that hold the vocab and doc freq of every word
   #===========================================================================#
+  def setup_vocab(self, dataset, threshold):
+    count_vocab = {}
+    vocab = []
+    for doc_name in dataset.keys():
+      for token in dataset[doc_name]:
+        if token not in count_vocab.keys():
+          count_vocab[token] = 0
+        else:
+          count_vocab[token] += 1
+
+        if token not in vocab and count_vocab[token] >= threshold:
+          vocab.append(token)
+
+    return vocab
+
   """
   Sets up the doc frequency of words in a given dataset.
   A dataset is a dictionary of this format: { 'doc_name' :  ['Here', 'are', ...] }
@@ -105,7 +110,6 @@ class DataPrepper():
   chosen dataset in this format: { 'Here' : 12, 'are' : 56 ... }
   """
   def setup_doc_freq(self, dataset):
-    THRESHOLD = 2
     df = {}
 
     for doc_name in dataset.keys():
@@ -116,50 +120,54 @@ class DataPrepper():
           if doc_name not in df[word]:
             df[word].append(doc_name)
 
-    result = {}
-    for word in df.keys():
-      doc_freq = len(df[word])
-      if (doc_freq > THRESHOLD):
-        result[word] = doc_freq
+    return df
 
-    return result
-
-  def get_chisq_vocab(self, datasets_train, threshold):
-    data_pos = datasets_train[0]
-    N_pos = len(data_pos.keys())
-    data_neg = datasets_train[1]
-    N_neg = len(data_neg.keys())
-
-    data_pos_doc_freq = self.setup_doc_freq(data_pos)
-    data_pos_vocab = list(data_pos_doc_freq.keys())
-    data_neg_doc_freq = self.setup_doc_freq(data_neg)
-    data_neg_vocab = list(data_neg_doc_freq.keys())
+  def get_chisq_vocab_NEW(self, data_pos_vocab, data_neg_vocab, docs_pos, docs_neg, threshold):
+    print('Computing chi-squared vocab...')
+    combined_vocabs = self.union_vocabs(data_pos_vocab, data_neg_vocab)
+    N_pos_docs = len(docs_pos.keys())
+    N_neg_docs = len(docs_neg.keys())
 
     feature_selected_vocab = []
-    for word in (data_pos_vocab + data_neg_vocab):
+    for word in (combined_vocabs):
+      N_pos_docs_containing_word = self.get_num_contains_word(docs_pos, word)
+      N_pos_docs_not_containing_word = N_pos_docs - N_pos_docs_containing_word
+
+      N_neg_docs_containing_word = self.get_num_contains_word(docs_neg, word)
+      N_neg_docs_not_containing_word = N_neg_docs - N_neg_docs_containing_word
+
       # no. of training docs that:
-      N_00 = 0 #  in negative class, do not contain w
-      N_01 = 0 #  in positive class, do not contain w
-      N_10 = 0 #  in negative class,        contain w
-      N_11 = 0 #  in positive class,        contain w
+      N_00 = N_neg_docs_not_containing_word  #  in negative class, do not contain w
+      N_01 = N_pos_docs_not_containing_word  #  in positive class, do not contain w
+      N_10 = N_neg_docs_containing_word      #  in negative class,        contain w
+      N_11 = N_pos_docs_containing_word      #  in positive class,        contain w
 
-      pos_word = data_pos_doc_freq[word] if word in data_pos_vocab else 0
-      neg_word = data_neg_doc_freq[word] if word in data_neg_vocab else 0
-
-      N_00 = float(N_neg - neg_word)
-      N_01 = float(N_pos - pos_word)
-      N_10 = float(neg_word)
-      N_11 = float(pos_word)
-
-      if not (N_10 == N_neg or N_11 == N_pos):
+      chisq = 0
+      if not (N_00 == 0 and N_01 == 0):
         chisq = ((N_11 + N_10 + N_01 + N_00) * pow(N_11 * N_00 - N_10 * N_01, 2)) / \
                 ((N_11 + N_01) * (N_11 + N_10) * (N_10 + N_00) * (N_01 + N_00))
-        if chisq > threshold:
-          feature_selected_vocab.append(word)
-      else:
-        chisq = 0
+
+      if chisq > threshold:
+        feature_selected_vocab.append(word)
 
     return feature_selected_vocab
+
+  def get_num_contains_word(self, df, word):
+    docs_containing_word = []
+    for doc_name in df.keys():
+      if word in df[doc_name]:
+        docs_containing_word.append(doc_name)
+    return len(docs_containing_word)
+
+  def union_vocabs(self, vocab_1, vocab_2):
+    unioned_vocab = []
+    for word in vocab_1:
+      if word not in unioned_vocab:
+        unioned_vocab.append(word)
+    for word in vocab_2:
+      if word not in unioned_vocab:
+        unioned_vocab.append(word)
+    return unioned_vocab
 
   #===========================================================================#
   # CONSTRUCT FEATURE VECTORS FOR EACH CLASS
@@ -179,9 +187,9 @@ class DataPrepper():
         if word in vocab:
           f_vector[vocab.index(word)] += 1
 
+      # Normalize by the number of words in a document
       for k in range(len(f_vector)):
-        value = f_vector[k] / DOC_N
-        f_vector[k] = value
+        f_vector[k] = f_vector[k] / DOC_N
 
       # Finished processing a feature vector of a doc
       dataset_f_vectors.append(f_vector)
@@ -192,6 +200,35 @@ class DataPrepper():
   # CONSTRUCT THE DATASET
   # Retrieves texts from training and test files
   #===========================================================================#
+  def prep_dataset(self, positive_class_name):
+    positives_fpc = self.get_texts_for_class(positive_class_name)
+    N_pos_docs = len(positives_fpc)
+
+    negatives_fpc_map = {}
+    N_neg_docs = 0
+
+    # Set up a dictionary containing { 'neg_class_name': [['53886', 'path_to_doc', 'c2'], [...] ...] }
+    for class_name in self.class_names:
+      if not (class_name == positive_class_name):
+        negatives_fpc_map[class_name] = self.get_texts_for_class(class_name)
+        N_neg_docs += 1
+
+    # Split the positive classes into train and test sets
+    pos_frac = 0.8
+    N_pos_train = int(N_pos_docs * pos_frac)
+    N_pos_test = int(N_pos_docs * (1 - pos_frac))
+
+    positives = self.sample_N_pos_texts(positives_fpc, N_pos_train)
+    train_positives = positives[0]
+    test_positives = positives[1]
+
+    # Sample and split the negatives classes into train and test sets
+    neg_frac_per_class = 0.9
+    negatives = self.sample_N_neg_texts(negatives_fpc_map, neg_frac_per_class)
+    train_negatives = negatives[0]
+    test_negatives = negatives[1]
+
+    return [[train_positives, train_negatives], [test_positives, test_negatives]]
 
   """
   Prepares the datasets we will need for training and testing
@@ -201,26 +238,26 @@ class DataPrepper():
   Returns a list of 2 pairs of tuples - one for train & test set, where each
   tuple contains 2 dictionaries - one for positives & negatives
   """
-  def prep_dataset(self, pos_class_name):
-    # Get a list of all texts classified as positive first in FPC format
-    positives_fpc = self.get_texts_for_class(pos_class_name)
-
-    # Setting our sample sizes
-    train_N = int(len(positives_fpc) * 0.80)
-    test_N = int(len(positives_fpc) * 0.20)
-
-    # Split the positive classes into train and test sets
-    positives = self.sample_N_pos_texts(positives_fpc, train_N)
-    train_positives = positives[0]
-    test_positives = positives[1]
-
-    # Sample and split the negatives classes into train and test sets
-    negative_classes = [class_name for class_name in self.class_names if class_name != pos_class_name]
-    negatives = self.sample_N_neg_texts(negative_classes, train_N, test_N)
-    train_negatives = negatives[0]
-    test_negatives = negatives[1]
-
-    return [(train_positives, train_negatives), (test_positives, test_negatives)]
+  # def prep_dataset(self, pos_class_name):
+  #   # Get a list of all texts classified as positive first in FPC format
+  #   positives_fpc = self.get_texts_for_class(pos_class_name)
+  #
+  #   # Setting our sample sizes
+  #   train_N = int(len(positives_fpc) * 0.80)
+  #   test_N = int(len(positives_fpc) * 0.20)
+  #
+  #   # Split the positive classes into train and test sets
+  #   positives = self.sample_N_pos_texts(positives_fpc, train_N)
+  #   train_positives = positives[0]
+  #   test_positives = positives[1]
+  #
+  #   # Sample and split the negatives classes into train and test sets
+  #   negative_classes = [class_name for class_name in self.class_names if class_name != pos_class_name]
+  #   negatives = self.sample_N_neg_texts(negative_classes, train_N*3, test_N*3)
+  #   train_negatives = negatives[0]
+  #   test_negatives = negatives[1]
+  #
+  #   return [(train_positives, train_negatives), (test_positives, test_negatives)]
 
   """
   Reads the train-class-list or test-class-list file to retrieve all the
@@ -323,30 +360,27 @@ class DataPrepper():
       { '[doc_name]' : 'some long string of text...' ... }
     ]
   """
-  def sample_N_neg_texts(self, negative_classes, N_train, N_test):
-    result_train = {}
-    result_test = {}
-    count = {}
+  def sample_N_neg_texts(self, negatives_fpc_map, neg_frac_per_class):
+    negative_classes = negatives_fpc_map.keys()
+    neg_train_map = {}
+    neg_test_map = {}
 
-    N_train_per_class = int(N_train / len(negative_classes))
-    N_test_per_class = int(N_test / len(negative_classes))
-
-    # Initialize counts for all classes
     for class_name in negative_classes:
-      count[class_name] = 0
+      N_docs = len(negatives_fpc_map[class_name])
+      N_train = int(N_docs * neg_frac_per_class)
 
-    # Split N_train into training set and N_test into test set
-    for fpc in self.fpc:
-      doc_name = fpc[0]
-      path_to_doc = fpc[1]
-      class_name = fpc[2]
+      for i in range(N_docs):
+        # Retrieve elements in fpc 3-tuple
+        doc_tuple = negatives_fpc_map[class_name][i]
+        doc_name = doc_tuple[0]
+        path_to_doc = doc_tuple[1]
+        class_name = doc_tuple[2]
 
-      if class_name in negative_classes and count[class_name] < (N_train_per_class + N_test_per_class):
         f = open(path_to_doc, 'r', encoding='latin1')
-        if count[class_name] < N_train_per_class:
-          result_train[doc_name] = f.read()
-        else:
-          result_test[doc_name] = f.read()
-        count[class_name] += 1
 
-    return (result_train, result_test)
+        if i < N_train:
+          neg_train_map[doc_name] = f.read()
+        else:
+          neg_test_map[doc_name] = f.read()
+
+    return (neg_train_map, neg_test_map)

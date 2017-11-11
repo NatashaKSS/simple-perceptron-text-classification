@@ -9,14 +9,13 @@ class PerceptronClassifier():
   def train(self, train_vectors):
     print("[PerceptronClassifier] Training...")
     x = self.setup_feature_vectors(train_vectors)
-    w = self.learn_weights(x, 0.1, 50)
+    w = self.learn_weights(x, 0.1, 150)
     return w
 
   def batch_classify_with_acc(self, w, test_vectors):
     y_true = self.get_true_y(test_vectors)
     y_predict = self.batch_classify(w, test_vectors)
-    print(y_true[:10] + y_true[-10:])
-    print(y_predict[:10] + y_predict[-10:])
+    print('y_true:', len(y_true), 'y_predict:', len(y_predict))
     return self.compute_acc(y_true, y_predict)
 
   def batch_classify(self, w, test_vectors):
