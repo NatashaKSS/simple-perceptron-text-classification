@@ -50,6 +50,7 @@ class TextClassifier():
   def validate(self, train_vectors, test_vectors):
     print("[TextClassifier] Validating perceptron classifier...")
     w = self.PerceptronClassifier.train(train_vectors)
+    print('weight:', w)
     acc = self.PerceptronClassifier.batch_classify_with_acc(w, test_vectors)
     print(acc)
 

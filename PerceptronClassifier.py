@@ -16,6 +16,11 @@ class PerceptronClassifier():
     y_true = self.get_true_y(test_vectors)
     y_predict = self.batch_classify(w, test_vectors)
     print('y_true:', len(y_true), 'y_predict:', len(y_predict))
+    print('--- y_true ---')
+    print(y_true)
+    print('--- y_predict ---')
+    print(y_predict)
+
     return self.compute_acc(y_true, y_predict)
 
   def batch_classify(self, w, test_vectors):
@@ -52,7 +57,7 @@ class PerceptronClassifier():
   Trains a weight vector using the perceptron learning algorithm
   """
   def learn_weights(self, x, learning_rate, num_epochs):
-    w = [1.0] * len(x[0])
+    w = [0.0] * len(x[0])
     for epoch in range(num_epochs):
       squared_error = 0.0
       for feature_vector in x:

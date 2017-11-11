@@ -31,7 +31,7 @@ class Tokenizer():
 
     for token in input_str_list:
       result_tok = token.lower()
-      # result_tok = token.strip(PUNCTUATIONS)
+      result_tok = token.strip(PUNCTUATIONS)
 
       if len(result_tok) > 0 and \
          not self.is_stopword(result_tok) and \

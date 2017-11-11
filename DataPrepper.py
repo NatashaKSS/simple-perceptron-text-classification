@@ -49,30 +49,32 @@ class DataPrepper():
 
     # Construct vocabulary from datasets
     print("[DataPrepper] Setting up positive & negative vocabs...")
-    vocab_pos = self.setup_vocab(train_pos_doc_map, 5)
-    vocab_neg = self.setup_vocab(train_neg_doc_map, 5)
+    vocab_pos = self.setup_vocab(train_pos_doc_map, 1)
+    vocab_neg = self.setup_vocab(train_neg_doc_map, 1)
 
     print("[DataPrepper] Setting up chi-squared vocab...")
-    chisq_vocab = self.get_chisq_vocab_NEW(vocab_pos, vocab_neg, datasets[0][0], datasets[0][1], 10)
+    chisq_vocab = self.get_chisq_vocab(vocab_pos, vocab_neg, train_pos_doc_map, train_neg_doc_map, 25)
     print("Num of words in vocabs: +Vocab=%d and -Vocab=%d and Chisq_Vocab=%d" %
       (len(vocab_pos), len(vocab_neg), len(chisq_vocab)))
 
     # convert each to feature vector and return them
     print("[DataPrepper] Setting up pos_train feature vector...")
-    f_vector_pos_train = self.setup_feature_vectors(chisq_vocab, datasets[0][0])
+    f_vector_pos_train = self.setup_feature_vectors(chisq_vocab, train_pos_doc_map)
 
     print("[DataPrepper] Setting up neg_train feature vector...")
-    f_vector_neg_train = self.setup_feature_vectors(chisq_vocab, datasets[0][1])
+    f_vector_neg_train = self.setup_feature_vectors(chisq_vocab, train_neg_doc_map)
 
     print("[DataPrepper] Setting up pos_test feature vector...")
-    f_vector_pos_test  = self.setup_feature_vectors(chisq_vocab, datasets[1][0])
+    f_vector_pos_test  = self.setup_feature_vectors(chisq_vocab, test_pos_doc_map)
 
     print("[DataPrepper] Setting up pos_test feature vector...")
-    f_vector_neg_test  = self.setup_feature_vectors(chisq_vocab, datasets[1][1])
+    f_vector_neg_test  = self.setup_feature_vectors(chisq_vocab, test_neg_doc_map)
 
     print(f_vector_pos_train[5])
+    print(f_vector_neg_train[int(len(train_neg_doc_map.keys()) / 2)])
     print('--------------NEG--------------')
-    print(f_vector_neg_train[int(len(train_neg_doc_map) / 2)])
+    print(f_vector_pos_test[50])
+    print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 2)])
 
     return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test]]
 
@@ -129,7 +131,7 @@ class DataPrepper():
 
     return df
 
-  def get_chisq_vocab_NEW(self, data_pos_vocab, data_neg_vocab, docs_pos, docs_neg, threshold):
+  def get_chisq_vocab(self, data_pos_vocab, data_neg_vocab, docs_pos, docs_neg, threshold):
     combined_vocabs = self.union_vocabs(data_pos_vocab, data_neg_vocab)
     N_pos_docs = len(docs_pos.keys())
     N_neg_docs = len(docs_neg.keys())
@@ -206,6 +208,13 @@ class DataPrepper():
   # CONSTRUCT THE DATASET
   # Retrieves texts from training and test files
   #===========================================================================#
+  """
+  Prepares the datasets we will need for training and testing.
+  Splits our corpus into positive and negative train/test sets.
+
+  Returns a list of 2 pairs of tuples - one for train & test set, where each
+  tuple contains 2 dictionaries - one for positives & negatives
+  """
   def prep_dataset(self, positive_class_name):
     positives_fpc = self.get_texts_for_class(positive_class_name)
     N_pos_docs = len(positives_fpc)
@@ -235,35 +244,6 @@ class DataPrepper():
     test_negatives = negatives[1]
 
     return [[train_positives, train_negatives], [test_positives, test_negatives]]
-
-  """
-  Prepares the datasets we will need for training and testing
-
-  Splits our corpus into positive and negative train/test sets.
-
-  Returns a list of 2 pairs of tuples - one for train & test set, where each
-  tuple contains 2 dictionaries - one for positives & negatives
-  """
-  # def prep_dataset(self, pos_class_name):
-  #   # Get a list of all texts classified as positive first in FPC format
-  #   positives_fpc = self.get_texts_for_class(pos_class_name)
-  #
-  #   # Setting our sample sizes
-  #   train_N = int(len(positives_fpc) * 0.80)
-  #   test_N = int(len(positives_fpc) * 0.20)
-  #
-  #   # Split the positive classes into train and test sets
-  #   positives = self.sample_N_pos_texts(positives_fpc, train_N)
-  #   train_positives = positives[0]
-  #   test_positives = positives[1]
-  #
-  #   # Sample and split the negatives classes into train and test sets
-  #   negative_classes = [class_name for class_name in self.class_names if class_name != pos_class_name]
-  #   negatives = self.sample_N_neg_texts(negative_classes, train_N*3, test_N*3)
-  #   train_negatives = negatives[0]
-  #   test_negatives = negatives[1]
-  #
-  #   return [(train_positives, train_negatives), (test_positives, test_negatives)]
 
   """
   Reads the train-class-list or test-class-list file to retrieve all the
