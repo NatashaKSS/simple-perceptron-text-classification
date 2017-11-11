@@ -1,6 +1,5 @@
 # Import standard modules
 import sys
-import pickle
 from DataPrepper import DataPrepper
 from PerceptronClassifier import PerceptronClassifier
 
@@ -28,15 +27,31 @@ class TextClassifier():
     # For all classes in class_names, train a perceptron
     for class_name in class_names:
       if class_name == 'c1': # TODO: HARDCODED FOR TESTING - REMEMBER TO ITERATE THROUGH EVERY CLASS
+        # When you want to train from some pickled feature vectors
+        # feature_vectors = []
+        # with open('f_vectors_base.pickle', 'rb') as handle:
+        #   feature_vectors = pickle.load(handle)
+
+        # When you want to pre-process the dataset again
         feature_vectors = self.DataPrepper.run(class_name)
         train_vectors = feature_vectors[0] # [f_vector_pos_train, f_vector_neg_train]
         test_vectors = feature_vectors[1]  # [f_vector_pos_test, f_vector_neg_test]
 
-        self.train(train_vectors)
+        # When you wanna save the feature vectors
+        # self.DataPrepper.run_and_save(class_name) # When you want to save the model
+
+        # self.train(train_vectors)
+        self.validate(train_vectors, test_vectors)
 
   def train(self, train_vectors):
     print("[TextClassifier] Training perceptron classifier...")
-    self.PerceptronClassifier.train(train_vectors)
+    return self.PerceptronClassifier.train(train_vectors)
+
+  def validate(self, train_vectors, test_vectors):
+    print("[TextClassifier] Validating perceptron classifier...")
+    w = self.PerceptronClassifier.train(train_vectors)
+    acc = self.PerceptronClassifier.batch_classify_with_acc(w, test_vectors)
+    print(acc)
 
   def saveModel(self):
     print("[TextClassifier] Saving model to disk...")

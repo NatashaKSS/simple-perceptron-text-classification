@@ -1,4 +1,5 @@
 # Import necessary modules
+import re
 from porter import PorterStemmer
 
 PUNCTUATIONS = '!"#$%&\'()*+,-./:;<=>?@[\]^_`{|}~'
@@ -26,11 +27,15 @@ class Tokenizer():
   def tokenize(self, input_str):
     result = []
     input_str_list = input_str.split()
+
     for token in input_str_list:
       result_tok = token.strip(' \n')
       result_tok = token.strip(PUNCTUATIONS)
 
-      if len(result_tok) > 0 and not self.is_stopword(result_tok):
+      if len(result_tok) > 0 and \
+         not self.is_stopword(result_tok) and \
+         not self.isMixedNumeric(result_tok):
+
         result_tok = self.stem(result_tok)
         result.append(result_tok)
 
@@ -66,6 +71,14 @@ class Tokenizer():
   """
   def strip_newline(self, input_str):
     return input_str.strip('\n')
+
+  """
+  Determines whether an input string has the RegEx given in this function
+  A RegEx match object will be returned if a complete match occurs
+  """
+  def isMixedNumeric(self, input_str):
+    pattern = r'([0-9]+[!"#$%&\'()*+,-./:;<=>?@[\]^_`{|}~]*)+'
+    return re.match(pattern, input_str)
 
   #===========================================================================#
   # SETUP

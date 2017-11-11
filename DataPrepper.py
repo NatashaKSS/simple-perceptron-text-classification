@@ -1,5 +1,6 @@
 # Import standard modules
 import sys
+import pickle
 from math import log
 from math import pow
 
@@ -22,6 +23,11 @@ class DataPrepper():
 
     print("[DataPrepper] Instantiated!")
 
+  def run_and_save(self, class_name):
+    feature_vectors = self.run(class_name)
+    with open('f_vectors_base.pickle', 'wb') as f:
+      pickle.dump(feature_vectors, f)
+
   """
   Processes the dataset and returns the feature vectors of each of the training
   and test sets (positively and negatively classified)
@@ -39,27 +45,39 @@ class DataPrepper():
 
     # construct vocabulary from datasets
     doc_freq_map = self.setup_doc_freq(dict(datasets[0][0], **datasets[0][1]))
+    self.print_counts_df(doc_freq_map)
+    # self.print_highest_df(doc_freq_map)
+
     vocab = list(doc_freq_map.keys()) # list of all the words in our corpus
-    chisq_vocab = self.get_chisq_vocab(datasets[0], 1.2)
-    print("Num of words in vocabs:", len(vocab), len(chisq_vocab ))
+    chisq_vocab = self.get_chisq_vocab(datasets[0], 5)
+    print("Num of words in vocabs: Vocab=%d and Chisq_Vocab=%d" % (len(vocab), len(chisq_vocab)))
 
     # convert each to feature vector and return them
     f_vector_pos_train = self.setup_feature_vectors(chisq_vocab, datasets[0][0])
     f_vector_neg_train = self.setup_feature_vectors(chisq_vocab, datasets[0][1])
-    f_vector_pos_test = self.setup_feature_vectors(chisq_vocab, datasets[1][0])
-    f_vector_neg_test = self.setup_feature_vectors(chisq_vocab, datasets[1][1])
+    f_vector_pos_test  = self.setup_feature_vectors(chisq_vocab, datasets[1][0])
+    f_vector_neg_test  = self.setup_feature_vectors(chisq_vocab, datasets[1][1])
 
-    # Test and check what are the values that are not 0
-    # for i in range(len(f_vector_pos_train[0])):
-    #   if f_vector_pos_train[0][i] > -700:
-    #     print(chisq_vocab[i], f_vector_pos_train[0][i])
-
-    print(len(f_vector_pos_train))
-    print(len(f_vector_neg_train))
-    print(len(f_vector_pos_test))
-    print(len(f_vector_neg_test))
+    # print(f_vector_pos_train[:5])
 
     return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test]]
+
+  def print_counts_df(self, doc_freq_map):
+    count_num_1 = 0
+    count_num_5 = 0
+    count_num_10 = 0
+    for k in doc_freq_map.keys():
+      if doc_freq_map[k] <= 1:
+        count_num_1 += 1
+      elif doc_freq_map[k] > 1 and doc_freq_map[k] <= 5:
+        count_num_5 += 1
+      else:
+        count_num_10 += 1
+    print('N<=1:', count_num_1, ' 1<N<=5:', count_num_5, ' N>10:', count_num_10)
+
+  def print_highest_df(self, doc_freq_map):
+    for w in sorted(doc_freq_map, key=doc_freq_map.get, reverse=True):
+      print(w, doc_freq_map[w])
 
   #===========================================================================#
   # TEXT NORMALIZATION
@@ -69,6 +87,7 @@ class DataPrepper():
     for i in range(len(datasets)):
       for j in range(len(datasets[i])):
         dict_class_documents = datasets[i][j]
+
         for doc_name in dict_class_documents.keys():
           dict_class_documents[doc_name] = \
             self.Tokenizer.tokenize(dict_class_documents[doc_name])
@@ -86,6 +105,7 @@ class DataPrepper():
   chosen dataset in this format: { 'Here' : 12, 'are' : 56 ... }
   """
   def setup_doc_freq(self, dataset):
+    THRESHOLD = 2
     df = {}
 
     for doc_name in dataset.keys():
@@ -96,10 +116,13 @@ class DataPrepper():
           if doc_name not in df[word]:
             df[word].append(doc_name)
 
+    result = {}
     for word in df.keys():
-      df[word] = len(df[word])
+      doc_freq = len(df[word])
+      if (doc_freq > THRESHOLD):
+        result[word] = doc_freq
 
-    return df
+    return result
 
   def get_chisq_vocab(self, datasets_train, threshold):
     data_pos = datasets_train[0]
@@ -136,9 +159,6 @@ class DataPrepper():
       else:
         chisq = 0
 
-      # FOR TESTING
-      # feature_selected_vocab.append([word, chisq, N_11, N_10])
-
     return feature_selected_vocab
 
   #===========================================================================#
@@ -159,12 +179,9 @@ class DataPrepper():
         if word in vocab:
           f_vector[vocab.index(word)] += 1
 
-      # log normalize term frequencies
-      # all values will be negative but the Highest score still implies that a term occurred the most often.
-      # Lowest score is about -708.3964185322641, if that term never occurred.
       for k in range(len(f_vector)):
-        value = float(f_vector[k]) / float(DOC_N)
-        f_vector[k] = log(value) if value != 0.0 else log(sys.float_info.min)
+        value = f_vector[k] / DOC_N
+        f_vector[k] = value
 
       # Finished processing a feature vector of a doc
       dataset_f_vectors.append(f_vector)
