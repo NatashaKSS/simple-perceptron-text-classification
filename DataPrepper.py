@@ -49,8 +49,8 @@ class DataPrepper():
 
     # Construct vocabulary from datasets
     print("[DataPrepper] Setting up positive & negative vocabs...")
-    vocab_pos = self.setup_vocab(train_pos_doc_map, 1)
-    vocab_neg = self.setup_vocab(train_neg_doc_map, 1)
+    vocab_pos = self.setup_vocab(train_pos_doc_map, 5)
+    vocab_neg = self.setup_vocab(train_neg_doc_map, 5)
 
     print("[DataPrepper] Setting up chi-squared vocab...")
     chisq_vocab = self.get_chisq_vocab(vocab_pos, vocab_neg, train_pos_doc_map, train_neg_doc_map, 25)
@@ -73,8 +73,12 @@ class DataPrepper():
     print(f_vector_pos_train[5])
     print(f_vector_neg_train[int(len(train_neg_doc_map.keys()) / 2)])
     print('--------------NEG--------------')
+    print(f_vector_pos_test[5])
     print(f_vector_pos_test[50])
+    print(f_vector_pos_test[75])
     print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 2)])
+    print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 3)])
+    print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 4)])
 
     return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test]]
 

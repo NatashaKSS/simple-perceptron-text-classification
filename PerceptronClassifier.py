@@ -9,7 +9,7 @@ class PerceptronClassifier():
   def train(self, train_vectors):
     print("[PerceptronClassifier] Training...")
     x = self.setup_feature_vectors(train_vectors)
-    w = self.learn_weights(x, 0.1, 150)
+    w = self.learn_weights(x, 1, 25)
     return w
 
   def batch_classify_with_acc(self, w, test_vectors):
@@ -61,9 +61,12 @@ class PerceptronClassifier():
     for epoch in range(num_epochs):
       squared_error = 0.0
       for feature_vector in x:
+        y_true = feature_vector[-1]
         y_predict = self.classify(feature_vector, w, self.threshold_activation)
-        error = feature_vector[-1] - y_predict
+        error = y_true - y_predict
         squared_error += error * error
+
+        print('feature_vector:', feature_vector)
 
         # Update bias and weights
         w[0] = w[0] + learning_rate * error
@@ -84,6 +87,7 @@ class PerceptronClassifier():
     activation = w[0]
     for i in range(len(f_vector) - 1):
       activation += w[i + 1] * f_vector[i]
+    #print("activation:", activation)
     return activation_func(activation)
 
   #===========================================================================#
