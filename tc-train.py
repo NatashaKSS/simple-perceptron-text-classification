@@ -60,18 +60,18 @@ class TextClassifier():
     X = f_train_vectors[0]
     y = f_train_vectors[1]
 
-    f = self.setup_feature_vectors([[[2.7810836, 2.550537003], [1.465489372, 2.362125076], [3.396561688, 4.400293529], [1.38807019, 1.850220317], [3.06407232, 3.005305973]], [[7.627531214, 2.759262235], [5.332441248, 2.088626775], [6.922596716, 1.77106367], [8.675418651, -0.242068655], [7.673756466, 3.508563011]]])
-    X = f[0]
-    y = f[1]
-    print(X)
-    print(y)
+    # f = self.setup_feature_vectors([[[2.7810836, 2.550537003], [1.465489372, 2.362125076], [3.396561688, 4.400293529], [1.38807019, 1.850220317], [3.06407232, 3.005305973]], [[7.627531214, 2.759262235], [5.332441248, 2.088626775], [6.922596716, 1.77106367], [8.675418651, -0.242068655], [7.673756466, 3.508563011]]])
+    # X = f[0]
+    # y = f[1]
+    # print(X)
+    # print(y)
     w = self.PerceptronClassifier.train(X, y)
     print('weight:', w)
 
     f_test_vectors = self.setup_feature_vectors(test_vectors)
     X_test = f_test_vectors[0]
     y_test = f_test_vectors[1]
-    acc = self.PerceptronClassifier.batch_classify_with_acc(w, X, y)
+    acc = self.PerceptronClassifier.batch_classify_with_acc(w, X_test[:50] + X_test[-50:], y_test[:50] + y_test[-50:])
     print('Accuracy:', acc)
 
   def saveModel(self):

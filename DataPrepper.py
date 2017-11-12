@@ -40,45 +40,70 @@ class DataPrepper():
     train_neg_doc_map = datasets[0][1]
     test_pos_doc_map = datasets[1][0]
     test_neg_doc_map = datasets[1][1]
+    N_docs = len(train_pos_doc_map) + len(train_neg_doc_map) + len(test_pos_doc_map) + len(test_neg_doc_map)
+
     print("Sample sizes - Train: %d positives + %d negatives, Test: %d positives + %d negatives" %
       (len(train_pos_doc_map), len(train_neg_doc_map), len(test_pos_doc_map), len(test_neg_doc_map)))
 
     # Text normalization: tokenization, stop word removal & stemming
     print("[DataPrepper] Tokenizing datasets...")
-    datasets = self.tokenize_datasets(datasets)
+    datasets_df_pair = self.tokenize_datasets(datasets)
+    datasets = datasets_df_pair[0]
+    doc_freq_map = datasets_df_pair[1]
+    print("Num of words in vocabs: Vocab=%d" % len(doc_freq_map.keys()))
+    doc_freq_map = self.cull_doc_freq(doc_freq_map, 50)
+    print("Num of words in vocabs: Culled Vocab=%d" % len(doc_freq_map.keys()))
+
+    # Construct df from datasets
+    datasets = self.setup_tfidf_vector(N_docs, datasets, doc_freq_map)
+    tryA = datasets[0][0]['38576']
+    tryB = datasets[0][1]['58826']
+    tryC = datasets[1][0]['38672']
+    tryD = datasets[1][1]['53890']
+    print('---SEE WHAT FEATURE VECTORS LOOK LIKE---')
+    print('try A:', tryA, 'dim:', len(tryA))
+    print('try B:', tryB, 'dim:', len(tryB))
+    print('try C:', tryC, 'dim:', len(tryC))
+    print('try D:', tryD, 'dim:', len(tryD))
+    print('---END SEE WHAT FEATURE VECTORS LOOK LIKE---')
+
+    f_vector_pos_train = self.setup_feature_vectors_for_classifier(datasets[0][0])
+    f_vector_neg_train = self.setup_feature_vectors_for_classifier(datasets[0][1])
+    f_vector_pos_test  = self.setup_feature_vectors_for_classifier(datasets[1][0])
+    f_vector_neg_test  = self.setup_feature_vectors_for_classifier(datasets[1][1])
 
     # Construct vocabulary from datasets
-    print("[DataPrepper] Setting up positive & negative vocabs...")
-    vocab_pos = self.setup_vocab(train_pos_doc_map, 5)
-    vocab_neg = self.setup_vocab(train_neg_doc_map, 5)
-
-    print("[DataPrepper] Setting up chi-squared vocab...")
-    chisq_vocab = self.get_chisq_vocab(vocab_pos, vocab_neg, train_pos_doc_map, train_neg_doc_map, 25)
-    print("Num of words in vocabs: +Vocab=%d and -Vocab=%d and Chisq_Vocab=%d" %
-      (len(vocab_pos), len(vocab_neg), len(chisq_vocab)))
-
-    # convert each to feature vector and return them
-    print("[DataPrepper] Setting up pos_train feature vector...")
-    f_vector_pos_train = self.setup_feature_vectors(chisq_vocab, train_pos_doc_map)
-
-    print("[DataPrepper] Setting up neg_train feature vector...")
-    f_vector_neg_train = self.setup_feature_vectors(chisq_vocab, train_neg_doc_map)
-
-    print("[DataPrepper] Setting up pos_test feature vector...")
-    f_vector_pos_test  = self.setup_feature_vectors(chisq_vocab, test_pos_doc_map)
-
-    print("[DataPrepper] Setting up pos_test feature vector...")
-    f_vector_neg_test  = self.setup_feature_vectors(chisq_vocab, test_neg_doc_map)
-
-    print(f_vector_pos_train[5])
-    print(f_vector_neg_train[int(len(train_neg_doc_map.keys()) / 2)])
-    print('--------------NEG--------------')
-    print(f_vector_pos_test[5])
-    print(f_vector_pos_test[50])
-    print(f_vector_pos_test[75])
-    print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 2)])
-    print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 3)])
-    print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 4)])
+    # print("[DataPrepper] Setting up positive & negative vocabs...")
+    # vocab_pos = self.setup_vocab(train_pos_doc_map, 5)
+    # vocab_neg = self.setup_vocab(train_neg_doc_map, 5)
+    #
+    # print("[DataPrepper] Setting up chi-squared vocab...")
+    # chisq_vocab = self.get_chisq_vocab(vocab_pos, vocab_neg, train_pos_doc_map, train_neg_doc_map, 25)
+    # print("Num of words in vocabs: +Vocab=%d and -Vocab=%d and Chisq_Vocab=%d" %
+    #   (len(vocab_pos), len(vocab_neg), len(chisq_vocab)))
+    #
+    # # convert each to feature vector and return them
+    # print("[DataPrepper] Setting up pos_train feature vector...")
+    # f_vector_pos_train = self.setup_feature_vectors(chisq_vocab, train_pos_doc_map)
+    #
+    # print("[DataPrepper] Setting up neg_train feature vector...")
+    # f_vector_neg_train = self.setup_feature_vectors(chisq_vocab, train_neg_doc_map)
+    #
+    # print("[DataPrepper] Setting up pos_test feature vector...")
+    # f_vector_pos_test  = self.setup_feature_vectors(chisq_vocab, test_pos_doc_map)
+    #
+    # print("[DataPrepper] Setting up pos_test feature vector...")
+    # f_vector_neg_test  = self.setup_feature_vectors(chisq_vocab, test_neg_doc_map)
+    #
+    # print(f_vector_pos_train[5])
+    # print(f_vector_neg_train[int(len(train_neg_doc_map.keys()) / 2)])
+    # print('--------------NEG--------------')
+    # print(f_vector_pos_test[5])
+    # print(f_vector_pos_test[50])
+    # print(f_vector_pos_test[75])
+    # print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 2)])
+    # print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 3)])
+    # print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 4)])
 
     return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test]]
 
@@ -86,7 +111,7 @@ class DataPrepper():
   # TEXT NORMALIZATION
   # Functions to facilitate text normalization for all datasets
   #===========================================================================#
-  def tokenize_datasets(self, datasets):
+  def tokenize_datasets_OLD(self, datasets):
     for i in range(len(datasets)):
       for j in range(len(datasets[i])):
         dict_class_documents = datasets[i][j]
@@ -95,6 +120,62 @@ class DataPrepper():
           dict_class_documents[doc_name] = \
             self.Tokenizer.tokenize(dict_class_documents[doc_name])
     return datasets
+
+  def tokenize_datasets(self, datasets):
+    doc_freq_map = {}
+
+    for i in range(len(datasets)):
+      for j in range(len(datasets[i])):
+        dict_class_documents = datasets[i][j]
+
+        for doc_name in dict_class_documents.keys():
+          dict_class_documents[doc_name] = self.Tokenizer.tokenize(dict_class_documents[doc_name])
+
+          # Construct doc freq map on-the-fly
+          tokens_processed_before = []
+          for token in dict_class_documents[doc_name]:
+            if token not in tokens_processed_before: # unique tokens in a doc
+              tokens_processed_before.append(token)
+              if token not in doc_freq_map.keys(): # if token is newly found, initialize
+                doc_freq_map[token] = [doc_name]
+              else:
+                doc_freq_map[token].append(doc_name) # since the word appears in this doc
+
+    return [datasets, doc_freq_map]
+
+  #===========================================================================#
+  # TF-IDF VECTORIZATION
+  # Compute TF-IDF vectors for every document
+  #===========================================================================#
+  def setup_tfidf_vector(self, NUM_DOCS, datasets, doc_freq_map):
+    vocab = list(doc_freq_map.keys())
+
+    for i in range(len(datasets)):
+      for j in range(len(datasets[i])):
+        dict_class_documents = datasets[i][j]
+
+        for doc_name in dict_class_documents.keys():
+          doc = dict_class_documents[doc_name]
+          f_vector = [0] * len(vocab)
+
+          for token in doc:
+            if token in vocab:
+              tf = doc.count(token)
+              log_tf = (1 + log(tf)) if tf > 0 else 0.0
+              log_idf = log(NUM_DOCS / len(doc_freq_map[token]))
+              w = log_tf * log_idf
+              f_vector[vocab.index(token)] = w
+
+          dict_class_documents[doc_name] = f_vector
+
+    return datasets
+
+  def cull_doc_freq(self, doc_freq_map, threshold_num_docs):
+    culled_df_map = {}
+    for word in doc_freq_map.keys():
+      if len(doc_freq_map[word]) > threshold_num_docs:
+        culled_df_map[word] = doc_freq_map[word]
+    return culled_df_map
 
   #===========================================================================#
   # CONSTRUCT VOCABULARY & DOC FREQ MAP
@@ -207,6 +288,15 @@ class DataPrepper():
       dataset_f_vectors.append(f_vector)
 
     return dataset_f_vectors
+
+  """
+  Stack map of {'doc_name': [1.81, 0, 6.8...] ... } into a list of feature vectors
+  """
+  def setup_feature_vectors_for_classifier(self, doc_tfidf_vector_map):
+    f_vectors = []
+    for doc_name in doc_tfidf_vector_map.keys():
+      f_vectors.append(doc_tfidf_vector_map[doc_name])
+    return f_vectors
 
   #===========================================================================#
   # CONSTRUCT THE DATASET

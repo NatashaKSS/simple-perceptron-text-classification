@@ -5,7 +5,7 @@
 class PerceptronClassifierNEW():
   def __init__(self):
     print("[PerceptronClassifier] Instantiated!")
-    self.learning_rate = 0.05
+    self.learning_rate = 0.1
     self.num_epochs = 50
 
   """
@@ -70,7 +70,7 @@ class PerceptronClassifierNEW():
     for x in X:
       print('x:', x)
       print('weight:', w)
-      y_predict.append(self.classify(x, w, self.threshold_activation, debug_mode=True))
+      y_predict.append(self.classify(x, w, self.threshold_activation, debug_mode=False))
       print('---')
     return y_predict
 
