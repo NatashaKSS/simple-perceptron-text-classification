@@ -37,7 +37,7 @@ class DataPrepper():
     doc_df_pair = self.tokenize_dataset(dataset)
     docs = doc_df_pair[0]
     doc_freq = doc_df_pair[1]
-    doc_freq = self.cull_doc_freq(doc_freq, 100)
+    doc_freq = self.cull_doc_freq(doc_freq, 50)
     print("Number of words in vocab:", len(doc_freq.keys()))
 
     print("[DataPrepper] Setting up feature vectors...")
