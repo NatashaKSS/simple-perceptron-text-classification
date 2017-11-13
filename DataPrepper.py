@@ -12,9 +12,9 @@ from Tokenizer import Tokenizer
 # Executes the text normalization phase
 #===========================================================================#
 class DataPrepper():
-  def __init__(self, PATH_TO_STOP_WORDS, PATH_TO_TRAIN_CLASS_LIST):
+  def __init__(self, PATH_TO_STOP_WORDS, PATH_TO_TRAIN_LIST):
     self.PATH_TO_STOP_WORDS = PATH_TO_STOP_WORDS
-    self.PATH_TO_TRAIN_CLASS_LIST = PATH_TO_TRAIN_CLASS_LIST
+    self.PATH_TO_CLASS_LIST = PATH_TO_TRAIN_LIST
     self.Tokenizer = Tokenizer(self.PATH_TO_STOP_WORDS)
 
     # Set up class-specific constants
@@ -33,41 +33,51 @@ class DataPrepper():
     test_pos_doc_map = datasets[1][0]
     test_neg_doc_map = datasets[1][1]
   """
-  def run(self, class_name):
-    print("[DataPrepper] Running for...", class_name)
-    print("[DataPrepper] Prepping datasets...")
-    datasets = self.prep_dataset(class_name)
+  def run(self, class_name, cross_validation_mode=False):
+    print("[DataPrepper] Running for", class_name, ", prepping datasets...")
+
+    datasets = None
+    if cross_validation_mode:
+      datasets = self.prep_dataset(class_name, 1.0, 1.0)
+    else:
+      datasets = self.prep_dataset(class_name, 0.8, 0.9)
+
     print("Sample sizes - Train: %d positives + %d negatives, Test: %d positives + %d negatives" %
-      (len(datasets[0][0]), len(datasets[0][1]), len(datasets[1][0]), len(datasets[1][1])))
+    (len(datasets[0][0]), len(datasets[0][1]), len(datasets[1][0]), len(datasets[1][1])))
 
     # Text normalization: tokenization, stop word removal & stemming
     print("[DataPrepper] Tokenizing datasets...")
     datasets_df_pair = self.tokenize_datasets(datasets)
     datasets = datasets_df_pair[0]
+    doc_freq_map = datasets_df_pair[1]
 
     # Construct df from datasets
-    doc_freq_map = datasets_df_pair[1]
-    print("Num of words in vocabs: Vocab=%d" % len(doc_freq_map.keys()))
     doc_freq_map = self.cull_doc_freq(doc_freq_map, 50)
+    print("Num of words in vocabs: Vocab=%d" % len(doc_freq_map.keys()))
     print("Num of words in vocabs: Culled Vocab=%d" % len(doc_freq_map.keys()))
 
     N_docs = len(datasets[0][0]) + len(datasets[0][1]) + len(datasets[1][0]) + len(datasets[1][1])
     datasets = self.setup_tfidf_vector(N_docs, datasets, doc_freq_map)
-    tryA = datasets[0][0][list(datasets[0][0].keys())[0]]
-    tryB = datasets[0][1][list(datasets[0][1].keys())[0]]
-    tryC = datasets[1][0][list(datasets[1][0].keys())[0]]
-    tryD = datasets[1][1][list(datasets[1][1].keys())[0]]
-    print('---SEE WHAT FEATURE VECTORS LOOK LIKE FOR %s---' % class_name)
-    print('try A:', tryA, 'dim:', len(tryA))
-    print('try B:', tryB, 'dim:', len(tryB))
-    print('try C:', tryC, 'dim:', len(tryC))
-    print('try D:', tryD, 'dim:', len(tryD))
-    print('---END SEE WHAT FEATURE VECTORS LOOK LIKE---')
+
+    # === FOR DEBUGGING ===
+    # tryA = datasets[0][0][list(datasets[0][0].keys())[0]]
+    # tryB = datasets[0][1][list(datasets[0][1].keys())[0]]
+    # tryC = datasets[1][0][list(datasets[1][0].keys())[0]]
+    # tryD = datasets[1][1][list(datasets[1][1].keys())[0]]
+    # print('---SEE WHAT FEATURE VECTORS LOOK LIKE FOR %s---' % class_name)
+    # print('try A:', tryA, 'dim:', len(tryA))
+    # print('try B:', tryB, 'dim:', len(tryB))
+    # print('try C:', tryC, 'dim:', len(tryC))
+    # print('try D:', tryD, 'dim:', len(tryD))
+    # print('---END SEE WHAT FEATURE VECTORS LOOK LIKE---')
 
     f_vector_pos_train = self.setup_feature_vectors_for_classifier(datasets[0][0])
     f_vector_neg_train = self.setup_feature_vectors_for_classifier(datasets[0][1])
-    f_vector_pos_test  = self.setup_feature_vectors_for_classifier(datasets[1][0])
-    f_vector_neg_test  = self.setup_feature_vectors_for_classifier(datasets[1][1])
+    f_vector_pos_test  = []
+    f_vector_neg_test  = []
+    if cross_validation_mode:
+      f_vector_pos_test  = self.setup_feature_vectors_for_classifier(datasets[1][0])
+      f_vector_neg_test  = self.setup_feature_vectors_for_classifier(datasets[1][1])
 
     return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test], doc_freq_map]
 
@@ -273,7 +283,7 @@ class DataPrepper():
   Returns a list of 2 pairs of tuples - one for train & test set, where each
   tuple contains 2 dictionaries - one for positives & negatives
   """
-  def prep_dataset(self, positive_class_name):
+  def prep_dataset(self, positive_class_name, pos_frac, neg_frac_per_class):
     positives_fpc = self.get_texts_for_class(positive_class_name)
     N_pos_docs = len(positives_fpc)
 
@@ -287,7 +297,6 @@ class DataPrepper():
         N_neg_docs += 1
 
     # Split the positive classes into train and test sets
-    pos_frac = 0.8
     N_pos_train = int(N_pos_docs * pos_frac)
     N_pos_test = int(N_pos_docs * (1 - pos_frac))
 
@@ -296,7 +305,6 @@ class DataPrepper():
     test_positives = positives[1]
 
     # Sample and split the negatives classes into train and test sets
-    neg_frac_per_class = 0.9
     negatives = self.sample_N_neg_texts(negatives_fpc_map, neg_frac_per_class)
     train_negatives = negatives[0]
     test_negatives = negatives[1]
@@ -311,7 +319,7 @@ class DataPrepper():
     [[doc_name, path_to_doc, class_name], ...]
   """
   def load_paths_to_training_text(self):
-    filepath_class_file = open(self.PATH_TO_TRAIN_CLASS_LIST, 'r')
+    filepath_class_file = open(self.PATH_TO_CLASS_LIST, 'r')
     filepath_class_lines = filepath_class_file.readlines()
 
     filename_path_classnames = []

@@ -42,7 +42,8 @@ class TextClassifier():
         weight_docfreq_map[class_name] = [w, doc_freq_map]
         print('=== FINISHED TRAINING MODEL FOR CLASS %s ===\n\n\n' % class_name)
 
-    self.save_models(weight_docfreq_map)
+    if cross_validation_mode:
+      self.save_models(weight_docfreq_map)
 
   def train_weight_vector(self, train_vectors):
     print("[TextClassifier] Training & Saving perceptron classifier...")
