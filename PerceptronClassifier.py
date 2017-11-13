@@ -5,18 +5,16 @@
 class PerceptronClassifier():
   def __init__(self):
     print("[PerceptronClassifier] Instantiated!")
-    self.learning_rate = 0.1
-    self.num_epochs = 50
 
   """
   Trains a weight vector using the perceptron learning algorithm
   """
-  def train(self, X, y_true):
+  def train(self, X, y_true, learning_rate=0.1, num_epochs=50):
     w = [1.0] + [0.0] * (len(X[0]) - 1) # first term is always the bias
-    for epoch in range(self.num_epochs):
+    for epoch in range(num_epochs):
       n_errors = 0 # accumulate number of errors in this epoch
       for x, y in zip(X, y_true):
-        update = self.learning_rate * (y - self.classify(x, w, self.threshold_activation))
+        update = learning_rate * (y - self.classify(x, w, self.threshold_activation))
         n_errors += int(update != 0.0)
 
         # Update bias and weights

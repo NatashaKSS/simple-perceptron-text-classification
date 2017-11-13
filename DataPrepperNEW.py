@@ -24,74 +24,84 @@ class DataPrepper():
     print("[DataPrepper] Instantiated!")
 
   """
-  Processes the dataset and returns the feature vectors of each of the training
-  and test sets (positively and negatively classified)
-
-  Note:
-    train_pos_doc_map = datasets[0][0]
-    train_neg_doc_map = datasets[0][1]
-    test_pos_doc_map = datasets[1][0]
-    test_neg_doc_map = datasets[1][1]
+  Processes the dataset and returns their feature vectors
   """
-  def run(self, class_name, cross_validation_mode=False):
-    print("[DataPrepper] Running for", class_name, ", prepping datasets...")
+  def run(self):
+    print("[DataPrepper] Running...")
 
-    return []
+    print("[DataPrepper] Sampling texts from disk...")
+    dataset = self.sample_texts()
+
+    print("[DataPrepper] Tokenizing...")
+    doc_df_pair = self.tokenize_dataset(dataset)
+    docs = doc_df_pair[0]
+    doc_freq = doc_df_pair[1]
+    doc_freq = self.cull_doc_freq(doc_freq, 50)
+    print("Number of words in vocab:", len(doc_freq.keys()))
+
+    print("[DataPrepper] Setting up feature vectors...")
+    feature_vectors_class = self.setup_tfidf_vectors(docs, doc_freq)
+
+    return feature_vectors_class
 
   #===========================================================================#
   # TEXT NORMALIZATION
   # Functions to facilitate text normalization for all datasets
   #
-  # ALSO CONSTRUCTS VOCABULARY & DOC FREQ MAP ON-THE-FLY
+  # ALSO CONSTRUCTS VOCABULARY / DOC FREQ MAP ON-THE-FLY
   #===========================================================================#
-  def tokenize_datasets(self, datasets):
+  def tokenize_dataset(self, dict_class_documents):
     doc_freq_map = {}
+    docs = dict_class_documents.keys()
+    N_DOCS = len(docs)
 
-    for i in range(len(datasets)):
-      for j in range(len(datasets[i])):
-        dict_class_documents = datasets[i][j]
+    self.print_loading_bar(0, N_DOCS, progress_text='Tokenizing:', complete_text='Complete')
+    for i, doc_name in enumerate(docs):
+      dict_class_documents[doc_name][0] = self.Tokenizer.tokenize(dict_class_documents[doc_name][0])
 
-        for doc_name in dict_class_documents.keys():
-          dict_class_documents[doc_name] = self.Tokenizer.tokenize(dict_class_documents[doc_name])
+      # Construct doc freq map on-the-fly
+      tokens_processed_before = []
+      for token in dict_class_documents[doc_name][0]:
+        if token not in tokens_processed_before: # unique tokens in a doc
+          tokens_processed_before.append(token)
+          if token not in doc_freq_map.keys():   # if token is newly found, initialize
+            doc_freq_map[token] = [doc_name]
+          else:
+            doc_freq_map[token].append(doc_name) # since the word appears in this doc
 
-          # Construct doc freq map on-the-fly
-          tokens_processed_before = []
-          for token in dict_class_documents[doc_name]:
-            if token not in tokens_processed_before: # unique tokens in a doc
-              tokens_processed_before.append(token)
-              if token not in doc_freq_map.keys(): # if token is newly found, initialize
-                doc_freq_map[token] = [doc_name]
-              else:
-                doc_freq_map[token].append(doc_name) # since the word appears in this doc
+      self.print_loading_bar(i + 1, N_DOCS, progress_text='Tokenizing:', complete_text='Complete')
 
-    return [datasets, doc_freq_map]
+    return [dict_class_documents, doc_freq_map]
 
   #===========================================================================#
   # TF-IDF VECTORIZATION
   # Compute TF-IDF vectors for every document
   #===========================================================================#
-  def setup_tfidf_vector(self, NUM_DOCS, datasets, doc_freq_map):
+  def setup_tfidf_vectors(self, dict_class_documents, doc_freq_map):
     vocab = list(doc_freq_map.keys())
+    doc_names = dict_class_documents.keys()
+    N_VOCAB = len(vocab)
+    N_DOCNAMES = len(doc_names)
+    f_vectors_classname = []
 
-    for i in range(len(datasets)):
-      for j in range(len(datasets[i])):
-        dict_class_documents = datasets[i][j]
+    self.print_loading_bar(0, N_DOCNAMES, progress_text='Setting up feature vectors:', complete_text='Complete')
+    for i, doc_name in enumerate(doc_names):
+      doc = dict_class_documents[doc_name][0]
+      class_name = dict_class_documents[doc_name][1]
+      f_vector = [0] * N_VOCAB
 
-        for doc_name in dict_class_documents.keys():
-          doc = dict_class_documents[doc_name]
-          f_vector = [0] * len(vocab)
+      for token in doc:
+        if token in vocab:
+          tf = doc.count(token)
+          log_tf = (1 + log(tf)) if tf > 0 else 0.0
+          log_idf = log(N_DOCNAMES / len(doc_freq_map[token]))
+          w = log_tf * log_idf
+          f_vector[vocab.index(token)] = w
 
-          for token in doc:
-            if token in vocab:
-              tf = doc.count(token)
-              log_tf = (1 + log(tf)) if tf > 0 else 0.0
-              log_idf = log(NUM_DOCS / len(doc_freq_map[token]))
-              w = log_tf * log_idf
-              f_vector[vocab.index(token)] = w
+      f_vectors_classname.append([f_vector, class_name])
+      self.print_loading_bar(i + 1, N_DOCNAMES, progress_text='Setting up feature vectors:', complete_text='Complete')
 
-          dict_class_documents[doc_name] = f_vector
-
-    return datasets
+    return f_vectors_classname
 
   def cull_doc_freq(self, doc_freq_map, threshold_num_docs):
     culled_df_map = {}
@@ -99,11 +109,6 @@ class DataPrepper():
       if len(doc_freq_map[word]) > threshold_num_docs:
         culled_df_map[word] = doc_freq_map[word]
     return culled_df_map
-
-  #===========================================================================#
-  # CONSTRUCT VOCABULARY & DOC FREQ MAP
-  # Set up data structures that hold the vocab and doc freq of every word
-  #===========================================================================#
 
   #===========================================================================#
   # CONSTRUCT THE DATASET
@@ -166,34 +171,35 @@ class DataPrepper():
     return result
 
   """
-  Retrieves the first N texts from a positive class
-
-  Returns a tuple of a
-    1.) dictionary of N positive training entries,
-    2.) dictionary of N positive testing entries the format:
-
-    [
-      { '[doc_name]' : 'some long string of text...' ... },
-      { '[doc_name]' : 'some long string of text...' ... }
-    ]
+  Retrieves dictionary of training entries from self.fpc in the format:
+    {
+      'doc_name1' : ['some long string of this text...', class_name],
+      'doc_name2' : ['some long string of this text...', class_name],
+      ...
+    }
   """
-  def sample_texts(self, N):
-    result_train = {}
-    result_test = {}
-    count = 0
+  def sample_texts(self):
+    result = {}
 
-    # Obtain the documents from each class specified in class_names
-    # First N documents are sent for training, the remaining are sent for testing
-    for fpc in pos_fpc:
+    for fpc in self.fpc:
       doc_name = fpc[0]
       path_to_doc = fpc[1]
       class_name = fpc[2]
 
       f = open(path_to_doc, 'r', encoding='latin1')
-      if count < N:
-        result_train[doc_name] = f.read()
-        count += 1
-      else:
-        result_test[doc_name] = f.read()
+      result[doc_name] = [f.read(), class_name]
 
-    return (result_train, result_test)
+    return result
+
+  """
+  Prints a progress bar
+  """
+  def print_loading_bar(self, chunk, N, progress_text = '', complete_text = ''):
+    percentage = (chunk / N) * 100
+    percentage_int = int(percentage)
+    percentage_decimal = str(percentage - percentage_int)[2]
+    bar = '█' * percentage_int + '-' * (100 - percentage_int)
+    print('\r%s |%s| %s.%s%% %s' % (progress_text, bar, percentage_int, percentage_decimal, complete_text), end = '\r')
+
+    if percentage >= 100.0:
+      print()

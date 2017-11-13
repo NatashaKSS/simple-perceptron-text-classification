@@ -1,7 +1,7 @@
 # Import standard modules
 import sys
 import pickle
-from DataPrepper import DataPrepper
+from DataPrepperNEW import DataPrepper
 from PerceptronClassifier import PerceptronClassifier
 
 #===========================================================================#
@@ -28,40 +28,41 @@ class TextClassifier():
     # Initialize data structure to save doc freq and weights
     weight_docfreq_map = {}
 
+    # Setup feature vectors for corpus
+    feature_vectors_classes = self.DataPrepper.run()
+
     # For all classes in class_names, train a perceptron
     for class_name in class_names:
       if class_name == 'c1':
-        feature_vectors = self.DataPrepper.run(class_name)
-        train_vectors = feature_vectors[0] # [f_vector_pos_train, f_vector_neg_train]
-        test_vectors = feature_vectors[1]  # [f_vector_pos_test, f_vector_neg_test]
-        doc_freq_map = feature_vectors[2]  # { 'here': 109, 'version': 56 ... }
-
-        w = self.train_weight_vector(train_vectors)
+        f_train_vectors = self.setup_feature_vectors(class_name, feature_vectors_classes)
+        X = f_train_vectors[0]
+        y = f_train_vectors[1]
+        w = self.PerceptronClassifier.train(X, y, learning_rate=0.5, num_epochs=200)
         print('weight:', w)
 
         weight_docfreq_map[class_name] = [w, doc_freq_map]
         print('=== FINISHED TRAINING MODEL FOR CLASS %s ===\n\n\n' % class_name)
 
-    if cross_validation_mode:
-      self.save_models(weight_docfreq_map)
-
-  def train_weight_vector(self, train_vectors):
-    print("[TextClassifier] Training & Saving perceptron classifier...")
-    f_train_vectors = self.setup_feature_vectors(train_vectors)
-    X = f_train_vectors[0]
-    y = f_train_vectors[1]
-    w = self.PerceptronClassifier.train(X, y)
-    return w
-
-  def validate(self, train_vectors, test_vectors):
+  def validate(self):
     print("[TextClassifier] Validating perceptron classifier...")
-    w = self.train_weight_vector(train_vectors)
 
-    f_test_vectors = self.setup_feature_vectors(test_vectors)
-    X_test = f_test_vectors[0]
-    y_test = f_test_vectors[1]
-    acc = self.PerceptronClassifier.batch_classify_with_acc(w, X_test[:50] + X_test[-50:], y_test[:50] + y_test[-50:], debug_mode=False)
-    print('Accuracy:', acc)
+    # Get all class names to make a perceptron classifier for
+    class_names = self.DataPrepper.class_names
+
+    # Setup feature vectors for corpus
+    feature_vectors_classes = self.DataPrepper.run()
+
+    # For all classes in class_names, train a perceptron
+    for class_name in class_names:
+      if class_name == 'c1':
+        f_train_vectors = self.setup_feature_vectors(class_name, feature_vectors_classes)
+        X = f_train_vectors[0]
+        y = f_train_vectors[1]
+        w = self.PerceptronClassifier.train(X, y, learning_rate=0.01, num_epochs=70)
+        acc = self.PerceptronClassifier.batch_classify_with_acc(w, X[:50] + X[-50:], y[:50] + y[-50:], debug_mode=False)
+        print('weight:', w)
+        print('Accuracy:', acc)
+        print('=== FINISHED VALIDATING MODEL FOR CLASS %s ===\n\n\n' % class_name)
 
   def save_models(self, weight_docfreq_map):
     print("[TextClassifier] Saving model to disk...")
@@ -79,28 +80,25 @@ class TextClassifier():
     vector's true classification:
     [1, 1, 0, ...]
   """
-  def setup_feature_vectors(self, f_vectors):
-    pos_feature_vectors = f_vectors[0]
-    neg_feature_vectors = f_vectors[1]
-
-    f_vectors = []
+  def setup_feature_vectors(self, pos_class_name, f_vectors_classnames):
+    result_f_vectors = []
     y = []
 
-    for f_vector_pos in pos_feature_vectors:
-      f_vector = [1.0] # with bias term
-      for elem in f_vector_pos:
-        f_vector.append(elem)
-      f_vectors.append(f_vector)
-      y.append(1) # because positive
+    for f_vector_classname in f_vectors_classnames:
+      f_vector = f_vector_classname[0]
+      y_true = f_vector_classname[1]
 
-    for f_vector_neg in neg_feature_vectors:
-      f_vector = [1.0] # with bias term
-      for elem in f_vector_neg:
-        f_vector.append(elem)
-      f_vectors.append(f_vector)
-      y.append(-1) # because negative
+      # Insert bias term
+      f_vector.insert(0, 1.0)
+      result_f_vectors.append(f_vector)
 
-    return [f_vectors, y]
+      # Re-mapping classnames to positive or negative classes
+      if y_true == pos_class_name:
+        y.append(1) # because positive
+      else:
+        y.append(-1) # because all other classes other than pos_class_name are negative
+
+    return [result_f_vectors, y]
 
 #===========================================================================#
 # EXECUTING THE PROGRAM
@@ -114,8 +112,7 @@ print("PATH_TO_STOP_WORDS:", PATH_TO_STOP_WORDS,
       ", PATH_TO_MODEL", PATH_TO_MODEL)
 
 model = TextClassifier()
-model.build()
-model.saveModel()
+model.validate()
 
 # pickle.dump(model, open(PATH_TO_MODEL, 'wb'))
 print("=== FINISHED TRAINING...MODEL SAVED IN " + PATH_TO_MODEL + " ===")
