@@ -30,7 +30,6 @@ class Tokenizer():
     input_str_list = re.split('\W+', input_str)
 
     for token in input_str_list:
-      result_tok = token.lower()
       result_tok = token.strip(PUNCTUATIONS)
 
       if len(result_tok) > 0 and \

@@ -25,32 +25,36 @@ class TextClassifier():
     # Get all class names to make a perceptron classifier for
     class_names = self.DataPrepper.class_names
 
+    # Initialize data structure to save doc freq and weights
+    weight_docfreq_map = {}
+
     # For all classes in class_names, train a perceptron
     for class_name in class_names:
-      if class_name == 'c1': # TODO: HARDCODED FOR TESTING - REMEMBER TO ITERATE THROUGH EVERY CLASS
-        # When you want to train from some pickled feature vectors
-        # feature_vectors = []
-        # with open('f_vectors_base.pickle', 'rb') as handle:
-        #   feature_vectors = pickle.load(handle)
-
-        # When you want to pre-process the dataset again
+      if class_name == 'c1':
         feature_vectors = self.DataPrepper.run(class_name)
         train_vectors = feature_vectors[0] # [f_vector_pos_train, f_vector_neg_train]
         test_vectors = feature_vectors[1]  # [f_vector_pos_test, f_vector_neg_test]
+        doc_freq_map = feature_vectors[2]  # { 'here': 109, 'version': 56 ... }
 
-        self.validate(train_vectors, test_vectors)
+        w = self.train_weight_vector(train_vectors)
+        print('weight:', w)
 
-  def train(self, train_vectors):
-    print("[TextClassifier] Training perceptron classifier...")
-    return self.PerceptronClassifier.train(train_vectors)
+        weight_docfreq_map[class_name] = [w, doc_freq_map]
+        print('=== FINISHED TRAINING MODEL FOR CLASS %s ===\n\n\n' % class_name)
 
-  def validate(self, train_vectors, test_vectors):
-    print("[TextClassifier] Validating perceptron classifier...")
+    self.save_models(weight_docfreq_map)
+
+  def train_weight_vector(self, train_vectors):
+    print("[TextClassifier] Training & Saving perceptron classifier...")
     f_train_vectors = self.setup_feature_vectors(train_vectors)
     X = f_train_vectors[0]
     y = f_train_vectors[1]
     w = self.PerceptronClassifier.train(X, y)
-    print('weight:', w)
+    return w
+
+  def validate(self, train_vectors, test_vectors):
+    print("[TextClassifier] Validating perceptron classifier...")
+    w = self.train_weight_vector(train_vectors)
 
     f_test_vectors = self.setup_feature_vectors(test_vectors)
     X_test = f_test_vectors[0]
@@ -58,8 +62,9 @@ class TextClassifier():
     acc = self.PerceptronClassifier.batch_classify_with_acc(w, X_test[:50] + X_test[-50:], y_test[:50] + y_test[-50:], debug_mode=False)
     print('Accuracy:', acc)
 
-  def saveModel(self):
+  def save_models(self, weight_docfreq_map):
     print("[TextClassifier] Saving model to disk...")
+    pickle.dump(weight_docfreq_map, open(PATH_TO_MODEL, 'wb'))
 
   """
   Sets feature_vectors into the correct shape, with its true y classification

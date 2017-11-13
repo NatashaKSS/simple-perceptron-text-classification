@@ -69,7 +69,7 @@ class DataPrepper():
     f_vector_pos_test  = self.setup_feature_vectors_for_classifier(datasets[1][0])
     f_vector_neg_test  = self.setup_feature_vectors_for_classifier(datasets[1][1])
 
-    return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test]]
+    return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test], doc_freq_map]
 
   #===========================================================================#
   # TEXT NORMALIZATION
