@@ -5,75 +5,26 @@
 class PerceptronClassifier():
   def __init__(self):
     print("[PerceptronClassifier] Instantiated!")
-
-  def train(self, train_vectors):
-    print("[PerceptronClassifier] Training...")
-    x = self.setup_feature_vectors(train_vectors)
-    w = self.learn_weights(x, 1, 25)
-    return w
-
-  def batch_classify_with_acc(self, w, test_vectors):
-    y_true = self.get_true_y(test_vectors)
-    y_predict = self.batch_classify(w, test_vectors)
-    print('y_true:', len(y_true), 'y_predict:', len(y_predict))
-    print('--- y_true ---')
-    print(y_true)
-    print('--- y_predict ---')
-    print(y_predict)
-
-    return self.compute_acc(y_true, y_predict)
-
-  def batch_classify(self, w, test_vectors):
-    x = self.setup_feature_vectors(test_vectors)
-    y_predict = []
-
-    for feature_vector in x:
-      y_predict.append(self.classify(feature_vector, w, self.threshold_activation))
-
-    return y_predict
-
-  def get_true_y(self, f_vectors):
-    pos_feature_vectors = f_vectors[0]
-    neg_feature_vectors = f_vectors[1]
-
-    y_true = []
-    for f_vector in pos_feature_vectors:
-      y_true.append(1)
-
-    for f_vector in neg_feature_vectors:
-      y_true.append(0)
-
-    return y_true
-
-  def compute_acc(self, y_true, y_predict):
-    correct = 0.0
-    N = len(y_true)
-    for i in range(N):
-      if y_true[i] == y_predict[i]:
-        correct += 1.0
-    return correct / N
+    self.learning_rate = 0.1
+    self.num_epochs = 50
 
   """
   Trains a weight vector using the perceptron learning algorithm
   """
-  def learn_weights(self, x, learning_rate, num_epochs):
-    w = [0.0] * len(x[0])
-    for epoch in range(num_epochs):
-      squared_error = 0.0
-      for feature_vector in x:
-        y_true = feature_vector[-1]
-        y_predict = self.classify(feature_vector, w, self.threshold_activation)
-        error = y_true - y_predict
-        squared_error += error * error
-
-        print('feature_vector:', feature_vector)
+  def train(self, X, y_true):
+    w = [1.0] + [0.0] * (len(X[0]) - 1) # first term is always the bias
+    for epoch in range(self.num_epochs):
+      n_errors = 0 # accumulate number of errors in this epoch
+      for x, y in zip(X, y_true):
+        update = self.learning_rate * (y - self.classify(x, w, self.threshold_activation))
+        n_errors += int(update != 0.0)
 
         # Update bias and weights
-        w[0] = w[0] + learning_rate * error
-        for i in range(len(feature_vector) - 1):
-          w[i + 1] = w[i + 1] + learning_rate * feature_vector[i] * error
+        w[0] += update
+        for i in range(len(x) - 1):
+          w[i + 1] += update * x[i]
 
-      print('epoch=%d, error=%.3f' % (epoch + 1, squared_error))
+      print('epoch=%d, error=%.d' % (epoch + 1, n_errors))
     return w
 
   """
@@ -83,11 +34,12 @@ class PerceptronClassifier():
   Pass in an activation function (use the ones given in the section
   'Activation Functions' below)
   """
-  def classify(self, f_vector, w, activation_func):
+  def classify(self, x, w, activation_func, debug_mode=False):
     activation = w[0]
-    for i in range(len(f_vector) - 1):
-      activation += w[i + 1] * f_vector[i]
-    #print("activation:", activation)
+    for i in range(len(x) - 1):
+      activation += w[i + 1] * x[i]
+    if debug_mode:
+      print('activation:', activation)
     return activation_func(activation)
 
   #===========================================================================#
@@ -98,33 +50,39 @@ class PerceptronClassifier():
   Simple threshold activation function
   """
   def threshold_activation(self, activation):
-    return 1.0 if activation >= 0.0 else 0.0
+    return 1 if activation >= 0.0 else -1
 
   #===========================================================================#
-  # A bit of pre-processing here to get feature vectors into the correct shape
+  # Classification Functions
   #===========================================================================#
-  """
-  Sets feature_vectors into the correct shape, with its true y classification
-  appended to the back of the feature vector's list
-  """
-  def setup_feature_vectors(self, train_vectors):
-    pos_feature_vectors = train_vectors[0]
-    neg_feature_vectors = train_vectors[1]
+  def batch_classify_with_acc(self, w, X, y_true, debug_mode=False):
+    y_predict = self.batch_classify(w, X, debug_mode)
+    print('y_true:', len(y_true), 'y_predict:', len(y_predict))
+    print('--- y_true ---')
+    print(y_true)
+    print('--- y_predict ---')
+    print(y_predict)
 
-    f_vectors = []
+    return self.compute_acc(y_true, y_predict)
 
-    for f_vector_pos in pos_feature_vectors:
-      f_vector = []
-      for elem in f_vector_pos:
-        f_vector.append(elem)
-      f_vector.append(1.0)
-      f_vectors.append(f_vector)
+  def batch_classify(self, w, X, debug_mode=False):
+    y_predict = []
+    for x in X:
+      if debug_mode:
+        print('x:', x)
+        print('weight:', w)
 
-    for f_vector_neg in neg_feature_vectors:
-      f_vector = []
-      for elem in f_vector_neg:
-        f_vector.append(elem)
-      f_vector.append(0.0)
-      f_vectors.append(f_vector)
+      y_predict.append(self.classify(x, w, self.threshold_activation, debug_mode=False))
 
-    return f_vectors
+      if debug_mode:
+        print('---')
+
+    return y_predict
+
+  def compute_acc(self, y_true, y_predict):
+    correct = 0
+    N = len(y_true)
+    for i in range(N):
+      if y_true[i] == y_predict[i]:
+        correct += 1
+    return correct / N

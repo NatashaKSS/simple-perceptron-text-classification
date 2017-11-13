@@ -23,44 +23,41 @@ class DataPrepper():
 
     print("[DataPrepper] Instantiated!")
 
-  def run_and_save(self, class_name):
-    feature_vectors = self.run(class_name)
-    with open('f_vectors_base.pickle', 'wb') as f:
-      pickle.dump(feature_vectors, f)
-
   """
   Processes the dataset and returns the feature vectors of each of the training
   and test sets (positively and negatively classified)
-  """
-  def run(self, class_name):
-    print("[DataPrepper] Running...")
-    print("[DataPrepper] Prepping datasets...")
-    datasets = self.prep_dataset(class_name)
+
+  Note:
     train_pos_doc_map = datasets[0][0]
     train_neg_doc_map = datasets[0][1]
     test_pos_doc_map = datasets[1][0]
     test_neg_doc_map = datasets[1][1]
-    N_docs = len(train_pos_doc_map) + len(train_neg_doc_map) + len(test_pos_doc_map) + len(test_neg_doc_map)
-
+  """
+  def run(self, class_name):
+    print("[DataPrepper] Running for...", class_name)
+    print("[DataPrepper] Prepping datasets...")
+    datasets = self.prep_dataset(class_name)
     print("Sample sizes - Train: %d positives + %d negatives, Test: %d positives + %d negatives" %
-      (len(train_pos_doc_map), len(train_neg_doc_map), len(test_pos_doc_map), len(test_neg_doc_map)))
+      (len(datasets[0][0]), len(datasets[0][1]), len(datasets[1][0]), len(datasets[1][1])))
 
     # Text normalization: tokenization, stop word removal & stemming
     print("[DataPrepper] Tokenizing datasets...")
     datasets_df_pair = self.tokenize_datasets(datasets)
     datasets = datasets_df_pair[0]
+
+    # Construct df from datasets
     doc_freq_map = datasets_df_pair[1]
     print("Num of words in vocabs: Vocab=%d" % len(doc_freq_map.keys()))
     doc_freq_map = self.cull_doc_freq(doc_freq_map, 50)
     print("Num of words in vocabs: Culled Vocab=%d" % len(doc_freq_map.keys()))
 
-    # Construct df from datasets
+    N_docs = len(datasets[0][0]) + len(datasets[0][1]) + len(datasets[1][0]) + len(datasets[1][1])
     datasets = self.setup_tfidf_vector(N_docs, datasets, doc_freq_map)
-    tryA = datasets[0][0]['38576']
-    tryB = datasets[0][1]['58826']
-    tryC = datasets[1][0]['38672']
-    tryD = datasets[1][1]['53890']
-    print('---SEE WHAT FEATURE VECTORS LOOK LIKE---')
+    tryA = datasets[0][0][list(datasets[0][0].keys())[0]]
+    tryB = datasets[0][1][list(datasets[0][1].keys())[0]]
+    tryC = datasets[1][0][list(datasets[1][0].keys())[0]]
+    tryD = datasets[1][1][list(datasets[1][1].keys())[0]]
+    print('---SEE WHAT FEATURE VECTORS LOOK LIKE FOR %s---' % class_name)
     print('try A:', tryA, 'dim:', len(tryA))
     print('try B:', tryB, 'dim:', len(tryB))
     print('try C:', tryC, 'dim:', len(tryC))
@@ -71,39 +68,6 @@ class DataPrepper():
     f_vector_neg_train = self.setup_feature_vectors_for_classifier(datasets[0][1])
     f_vector_pos_test  = self.setup_feature_vectors_for_classifier(datasets[1][0])
     f_vector_neg_test  = self.setup_feature_vectors_for_classifier(datasets[1][1])
-
-    # Construct vocabulary from datasets
-    # print("[DataPrepper] Setting up positive & negative vocabs...")
-    # vocab_pos = self.setup_vocab(train_pos_doc_map, 5)
-    # vocab_neg = self.setup_vocab(train_neg_doc_map, 5)
-    #
-    # print("[DataPrepper] Setting up chi-squared vocab...")
-    # chisq_vocab = self.get_chisq_vocab(vocab_pos, vocab_neg, train_pos_doc_map, train_neg_doc_map, 25)
-    # print("Num of words in vocabs: +Vocab=%d and -Vocab=%d and Chisq_Vocab=%d" %
-    #   (len(vocab_pos), len(vocab_neg), len(chisq_vocab)))
-    #
-    # # convert each to feature vector and return them
-    # print("[DataPrepper] Setting up pos_train feature vector...")
-    # f_vector_pos_train = self.setup_feature_vectors(chisq_vocab, train_pos_doc_map)
-    #
-    # print("[DataPrepper] Setting up neg_train feature vector...")
-    # f_vector_neg_train = self.setup_feature_vectors(chisq_vocab, train_neg_doc_map)
-    #
-    # print("[DataPrepper] Setting up pos_test feature vector...")
-    # f_vector_pos_test  = self.setup_feature_vectors(chisq_vocab, test_pos_doc_map)
-    #
-    # print("[DataPrepper] Setting up pos_test feature vector...")
-    # f_vector_neg_test  = self.setup_feature_vectors(chisq_vocab, test_neg_doc_map)
-    #
-    # print(f_vector_pos_train[5])
-    # print(f_vector_neg_train[int(len(train_neg_doc_map.keys()) / 2)])
-    # print('--------------NEG--------------')
-    # print(f_vector_pos_test[5])
-    # print(f_vector_pos_test[50])
-    # print(f_vector_pos_test[75])
-    # print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 2)])
-    # print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 3)])
-    # print(f_vector_neg_test[int(len(test_neg_doc_map.keys()) / 4)])
 
     return [[f_vector_pos_train, f_vector_neg_train], [f_vector_pos_test, f_vector_neg_test]]
 

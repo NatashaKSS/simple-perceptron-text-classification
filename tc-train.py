@@ -1,7 +1,8 @@
 # Import standard modules
 import sys
+import pickle
 from DataPrepper import DataPrepper
-from PerceptronClassifierNEW import PerceptronClassifierNEW
+from PerceptronClassifier import PerceptronClassifier
 
 #===========================================================================#
 # TRAINING THE TEXT CLASSIFIER
@@ -16,7 +17,7 @@ class TextClassifier():
   def __init__(self):
     print("[TextClassifier] instantiated!")
     self.DataPrepper = DataPrepper(PATH_TO_STOP_WORDS, PATH_TO_TRAIN_CLASS_LIST)
-    self.PerceptronClassifier = PerceptronClassifierNEW()
+    self.PerceptronClassifier = PerceptronClassifier()
 
   def build(self):
     print("[TextClassifier] Prepping dataset...")
@@ -37,11 +38,7 @@ class TextClassifier():
         train_vectors = feature_vectors[0] # [f_vector_pos_train, f_vector_neg_train]
         test_vectors = feature_vectors[1]  # [f_vector_pos_test, f_vector_neg_test]
 
-        # When you wanna save the feature vectors
-        # self.DataPrepper.run_and_save(class_name) # When you want to save the model
-
-        # self.train(train_vectors)
-        self.validateNEW(train_vectors, test_vectors)
+        self.validate(train_vectors, test_vectors)
 
   def train(self, train_vectors):
     print("[TextClassifier] Training perceptron classifier...")
@@ -49,29 +46,16 @@ class TextClassifier():
 
   def validate(self, train_vectors, test_vectors):
     print("[TextClassifier] Validating perceptron classifier...")
-    w = self.PerceptronClassifier.train(train_vectors)
-    print('weight:', w)
-    acc = self.PerceptronClassifier.batch_classify_with_acc(w, test_vectors)
-    print(acc)
-
-  def validateNEW(self, train_vectors, test_vectors):
-    print("[TextClassifier] Validating perceptron classifier...")
     f_train_vectors = self.setup_feature_vectors(train_vectors)
     X = f_train_vectors[0]
     y = f_train_vectors[1]
-
-    # f = self.setup_feature_vectors([[[2.7810836, 2.550537003], [1.465489372, 2.362125076], [3.396561688, 4.400293529], [1.38807019, 1.850220317], [3.06407232, 3.005305973]], [[7.627531214, 2.759262235], [5.332441248, 2.088626775], [6.922596716, 1.77106367], [8.675418651, -0.242068655], [7.673756466, 3.508563011]]])
-    # X = f[0]
-    # y = f[1]
-    # print(X)
-    # print(y)
     w = self.PerceptronClassifier.train(X, y)
     print('weight:', w)
 
     f_test_vectors = self.setup_feature_vectors(test_vectors)
     X_test = f_test_vectors[0]
     y_test = f_test_vectors[1]
-    acc = self.PerceptronClassifier.batch_classify_with_acc(w, X_test[:50] + X_test[-50:], y_test[:50] + y_test[-50:])
+    acc = self.PerceptronClassifier.batch_classify_with_acc(w, X_test[:50] + X_test[-50:], y_test[:50] + y_test[-50:], debug_mode=False)
     print('Accuracy:', acc)
 
   def saveModel(self):
