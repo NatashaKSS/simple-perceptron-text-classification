@@ -55,11 +55,18 @@ class TextClassifier():
     # For all classes in class_names, train a perceptron
     for class_name in class_names:
       if class_name == 'c1':
-        f_train_vectors = self.setup_feature_vectors(class_name, feature_vectors_classes)
-        X = f_train_vectors[0]
-        y = f_train_vectors[1]
-        w = self.PerceptronClassifier.train(X, y, learning_rate=0.01, num_epochs=70)
-        acc = self.PerceptronClassifier.batch_classify_with_acc(w, X[:50] + X[-50:], y[:50] + y[-50:], debug_mode=False)
+        f_vectors_mixed = self.setup_feature_vectors(class_name, feature_vectors_classes)
+        f_train_test_vectors = self.setup_feature_vectors_split(f_vectors_mixed[0], f_vectors_mixed[1], 2000)
+        f_train_vectors = f_train_test_vectors[0]
+        f_test_vectors = f_train_test_vectors[1]
+        X_train = f_train_vectors[0]
+        y_train = f_train_vectors[1]
+        X_test = f_test_vectors[0]
+        y_test = f_test_vectors[1]
+
+        print("Sample sizes - Train: %d samples, Test: %d samples" % (len(X_train), len(X_test)))
+        w = self.PerceptronClassifier.train(X_train, y_train, learning_rate=0.01, num_epochs=70)
+        acc = self.PerceptronClassifier.batch_classify_with_acc(w, X_test, y_test, debug_mode=False)
         print('weight:', w)
         print('Accuracy:', acc)
         print('=== FINISHED VALIDATING MODEL FOR CLASS %s ===\n\n\n' % class_name)
@@ -99,6 +106,24 @@ class TextClassifier():
         y.append(-1) # because all other classes other than pos_class_name are negative
 
     return [result_f_vectors, y]
+
+  def setup_feature_vectors_split(self, f_vectors, y, num_train):
+    result_f_train_vectors = []
+    y_train = []
+
+    result_f_test_vectors = []
+    y_test = []
+
+    for i, f_vector in enumerate(f_vectors):
+      if i < num_train:
+        result_f_train_vectors.append(f_vector)
+        y_train.append(y[i])
+      else:
+        # rest goes to test set
+        result_f_test_vectors.append(f_vector)
+        y_test.append(y[i])
+
+    return [[result_f_train_vectors, y_train], [result_f_test_vectors, y_test]]
 
 #===========================================================================#
 # EXECUTING THE PROGRAM

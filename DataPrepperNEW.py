@@ -24,7 +24,8 @@ class DataPrepper():
     print("[DataPrepper] Instantiated!")
 
   """
-  Processes the dataset and returns their feature vectors
+  Processes the dataset and returns their feature vectors in the format:
+    [[feature_vector, 'c1'], [feature_vector, 'c2'] ...]
   """
   def run(self):
     print("[DataPrepper] Running...")
