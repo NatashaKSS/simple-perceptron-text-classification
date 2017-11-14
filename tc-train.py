@@ -44,7 +44,7 @@ class TextClassifier():
       print('weight:', w)
 
       weight_docfreq_map[class_name] = w
-      print('=== FINISHED TRAINING MODEL FOR CLASS %s ===\n\n\n' % class_name)
+      print('=== FINISHED TRAINING MODEL FOR CLASS %s ===\n\n' % class_name)
 
     self.save_models([weight_docfreq_map, doc_freq_map])
 

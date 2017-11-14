@@ -48,18 +48,23 @@ class DataPrepper():
 
     print("[DataPrepper] Setting up feature vectors...")
     feature_vectors_class = self.setup_tfidf_vectors(docs, doc_freq)
-    print(feature_vectors_class[0])
-    print(feature_vectors_class[501])
-    print(feature_vectors_class[1101])
-    print(feature_vectors_class[1601])
-    print(feature_vectors_class[2051])
+
+    # Debug
+    # print(feature_vectors_class[0])
+    # print(feature_vectors_class[501])
+    # print(feature_vectors_class[1101])
+    # print(feature_vectors_class[1601])
+    # print(feature_vectors_class[2051])
+
     return [feature_vectors_class, doc_freq]
 
   def run_test(self, doc_freq):
     print("[DataPrepper] Running on testset...")
     dataset_filepath = self.sample_texts_for_test()
-    dataset_tokenized_filepath = self.tokenize_dataset_for_test(dataset_filepath)
-    f_vectors_filepath = self.setup_tfidf_vectors(dataset_tokenized_filepath, doc_freq, test_mode=True)
+    doc_df_pair = self.tokenize_dataset(dataset_filepath)
+    docs = doc_df_pair[0]
+    doc_freq_testset = doc_df_pair[1]
+    f_vectors_filepath = self.setup_tfidf_vectors_for_test(docs, doc_freq, doc_freq_testset, test_mode=True)
 
     return f_vectors_filepath
 
@@ -92,17 +97,6 @@ class DataPrepper():
 
     return [dict_class_documents, doc_freq_map]
 
-  def tokenize_dataset_for_test(self, doc_filepath_map):
-    docs = doc_filepath_map.keys()
-    N_DOCS = len(docs)
-
-    self.print_loading_bar(0, N_DOCS, progress_text='Tokenizing:', complete_text='Complete')
-    for i, doc_name in enumerate(docs):
-      doc_filepath_map[doc_name][0] = self.Tokenizer.tokenize(doc_filepath_map[doc_name][0])
-      self.print_loading_bar(i + 1, N_DOCS, progress_text='Tokenizing:', complete_text='Complete')
-
-    return doc_filepath_map
-
   #===========================================================================#
   # TF-IDF VECTORIZATION
   # Compute TF-IDF vectors for every document
@@ -130,13 +124,41 @@ class DataPrepper():
           log_tf = (1 + log(tf)) if tf > 0 else 0.0
           log_idf = log(N_DOCNAMES / len(doc_freq_map[token]))
           w = log_tf * log_idf
-          f_vector[vocab.index(token)] = tf
+          f_vector[vocab.index(token)] = w
 
       f_vectors_classname.append([f_vector, class_name])
 
       self.print_loading_bar(i + 1, N_DOCNAMES, progress_text='Setting up feature vectors:', complete_text='Complete')
 
     return f_vectors_classname
+
+  def setup_tfidf_vectors_for_test(self, dict_class_documents, doc_freq_map, doc_freq_map_testset, test_mode=False):
+    vocab = list(doc_freq_map.keys())
+    doc_names = dict_class_documents.keys()
+    N_VOCAB = len(vocab)
+    N_DOCNAMES = len(doc_names)
+    f_vectors_classname = []
+
+    self.print_loading_bar(0, N_DOCNAMES, progress_text='Setting up feature vectors:', complete_text='Complete')
+    for i, doc_name in enumerate(doc_names):
+      doc = dict_class_documents[doc_name][0]
+      class_name = dict_class_documents[doc_name][1]
+      f_vector = [0] * N_VOCAB
+
+      for token in doc:
+        if token in vocab:
+          tf = doc.count(token)
+          log_tf = (1 + log(tf)) if tf > 0 else 0.0
+          log_idf = log(N_DOCNAMES / len(doc_freq_map_testset[token]))
+          w = log_tf * log_idf
+          f_vector[vocab.index(token)] = w
+
+      f_vectors_classname.append([f_vector, class_name])
+
+      self.print_loading_bar(i + 1, N_DOCNAMES, progress_text='Setting up feature vectors:', complete_text='Complete')
+
+    return f_vectors_classname
+
 
   def cull_doc_freq(self, doc_freq_map, threshold_num_docs):
     culled_df_map = {}
