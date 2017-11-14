@@ -12,14 +12,20 @@ from Tokenizer import Tokenizer
 # Executes the text normalization phase
 #===========================================================================#
 class DataPrepper():
-  def __init__(self, PATH_TO_STOP_WORDS, PATH_TO_TRAIN_LIST):
+  def __init__(self, PATH_TO_STOP_WORDS, PATH_TO_CLASS_LIST, test_mode=False):
     self.PATH_TO_STOP_WORDS = PATH_TO_STOP_WORDS
-    self.PATH_TO_CLASS_LIST = PATH_TO_TRAIN_LIST
+    self.PATH_TO_CLASS_LIST = PATH_TO_CLASS_LIST
     self.Tokenizer = Tokenizer(self.PATH_TO_STOP_WORDS)
 
     # Set up class-specific constants
-    self.fpc = self.load_paths_to_training_text() # F.P.C means filename_path_classnames
-    self.class_names = self.get_class_names()
+    if test_mode:
+      # F.P.C means filename_path_classnames, there aren't any classes retrieved
+      # during the test phase, but we keep the name convention for convenience
+      self.fpc = self.load_paths_to_test_text()
+    else:
+      # F.P.C means filename_path_classnames
+      self.fpc = self.load_paths_to_training_text()
+      self.class_names = self.get_class_names()
 
     print("[DataPrepper] Instantiated!")
 
@@ -28,7 +34,7 @@ class DataPrepper():
     [[feature_vector, 'c1'], [feature_vector, 'c2'] ...]
   """
   def run(self):
-    print("[DataPrepper] Running...")
+    print("[DataPrepper] Running on training set...")
 
     print("[DataPrepper] Sampling texts from disk...")
     dataset = self.sample_texts()
@@ -43,7 +49,15 @@ class DataPrepper():
     print("[DataPrepper] Setting up feature vectors...")
     feature_vectors_class = self.setup_tfidf_vectors(docs, doc_freq)
 
-    return feature_vectors_class
+    return [feature_vectors_class, doc_freq]
+
+  def run_test(self, doc_freq):
+    print("[DataPrepper] Running on testset...")
+    dataset_filepath = self.sample_texts_for_test()
+    dataset_tokenized_filepath = self.tokenize_dataset_for_test(dataset_filepath)
+    f_vectors_filepath = self.setup_tfidf_vectors(dataset_tokenized_filepath, doc_freq, test_mode=True)
+
+    return f_vectors_filepath
 
   #===========================================================================#
   # TEXT NORMALIZATION
@@ -74,11 +88,26 @@ class DataPrepper():
 
     return [dict_class_documents, doc_freq_map]
 
+  def tokenize_dataset_for_test(self, doc_filepath_map):
+    docs = doc_filepath_map.keys()
+    N_DOCS = len(docs)
+
+    self.print_loading_bar(0, N_DOCS, progress_text='Tokenizing:', complete_text='Complete')
+    for i, doc_name in enumerate(docs):
+      doc_filepath_map[doc_name][0] = self.Tokenizer.tokenize(doc_filepath_map[doc_name][0])
+      self.print_loading_bar(i + 1, N_DOCS, progress_text='Tokenizing:', complete_text='Complete')
+
+    return doc_filepath_map
+
   #===========================================================================#
   # TF-IDF VECTORIZATION
   # Compute TF-IDF vectors for every document
   #===========================================================================#
-  def setup_tfidf_vectors(self, dict_class_documents, doc_freq_map):
+  """
+  Returns [[f_vector1, class_name], [f_vector2, class_name] ...].
+  class_name is path to text doc represented by feature vector if test_mode=True
+  """
+  def setup_tfidf_vectors(self, dict_class_documents, doc_freq_map, test_mode=False):
     vocab = list(doc_freq_map.keys())
     doc_names = dict_class_documents.keys()
     N_VOCAB = len(vocab)
@@ -100,9 +129,35 @@ class DataPrepper():
           f_vector[vocab.index(token)] = w
 
       f_vectors_classname.append([f_vector, class_name])
+
       self.print_loading_bar(i + 1, N_DOCNAMES, progress_text='Setting up feature vectors:', complete_text='Complete')
 
     return f_vectors_classname
+
+  def setup_tfidf_vectors_for_test(self, dict_class_documents, doc_freq_map):
+    vocab = list(doc_freq_map.keys())
+    doc_names = dict_class_documents.keys()
+    N_VOCAB = len(vocab)
+    N_DOCNAMES = len(doc_names)
+    f_vectors = []
+
+    self.print_loading_bar(0, N_DOCNAMES, progress_text='Setting up feature vectors:', complete_text='Complete')
+    for i, doc_name in enumerate(doc_names):
+      doc = dict_class_documents[doc_name][0]
+      f_vector = [0] * N_VOCAB
+
+      for token in doc:
+        if token in vocab:
+          tf = doc.count(token)
+          log_tf = (1 + log(tf)) if tf > 0 else 0.0
+          log_idf = log(N_DOCNAMES / len(doc_freq_map[token]))
+          w = log_tf * log_idf
+          f_vector[vocab.index(token)] = w
+
+      f_vectors.append([f_vector, class_name])
+      self.print_loading_bar(i + 1, N_DOCNAMES, progress_text='Setting up feature vectors:', complete_text='Complete')
+
+    return f_vectors
 
   def cull_doc_freq(self, doc_freq_map, threshold_num_docs):
     culled_df_map = {}
@@ -140,6 +195,25 @@ class DataPrepper():
       filename_path_classnames.append(result)
 
     return filename_path_classnames
+
+  """
+  Reads the test-list file to retrieve all the paths to each test document
+
+  Returns a list of 3-tuples in the format:
+    [[doc_name, path_to_doc], ...]
+  """
+  def load_paths_to_test_text(self):
+    filename_path = open(self.PATH_TO_CLASS_LIST, 'r')
+    filename_path_lines = filename_path.readlines()
+
+    filename_paths = []
+    for ln in filename_path_lines:
+      filename = self.Tokenizer.split_on_slash_from_back(ln)[1]
+      filename = self.Tokenizer.strip_newline(filename)
+      filepath = self.Tokenizer.strip_newline(ln)
+      filename_paths.append([filename, filepath])
+
+    return filename_paths
 
   """
   Gets the list of all the class names in our corpus
@@ -191,6 +265,27 @@ class DataPrepper():
       result[doc_name] = [f.read(), class_name]
 
     return result
+
+  """
+  Retrieves dictionary of test entries from self.fpc in the format:
+    {
+      'doc_name1' : ['some long string of this text...'],
+      'doc_name2' : ['some long string of this text...'],
+      ...
+    }
+  """
+  def sample_texts_for_test(self):
+    result = {}
+
+    for fpc in self.fpc:
+      doc_name = fpc[0]
+      path_to_doc = fpc[1]
+
+      f = open(path_to_doc, 'r', encoding='latin1')
+      result[doc_name] = [f.read(), path_to_doc]
+
+    return result
+
 
   """
   Prints a progress bar

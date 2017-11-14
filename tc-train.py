@@ -29,19 +29,22 @@ class TextClassifier():
     weight_docfreq_map = {}
 
     # Setup feature vectors for corpus
-    feature_vectors_classes = self.DataPrepper.run()
+    feature_vectors_classes_docfreq = self.DataPrepper.run()
+    feature_vectors_classes = feature_vectors_classes_docfreq[0]
+    doc_freq_map = feature_vectors_classes_docfreq[1]
 
     # For all classes in class_names, train a perceptron
     for class_name in class_names:
-      if class_name == 'c1':
-        f_train_vectors = self.setup_feature_vectors(class_name, feature_vectors_classes)
-        X = f_train_vectors[0]
-        y = f_train_vectors[1]
-        w = self.PerceptronClassifier.train(X, y, learning_rate=0.01, num_epochs=70)
-        print('weight:', w)
+      f_train_vectors = self.setup_feature_vectors(class_name, feature_vectors_classes)
+      X = f_train_vectors[0]
+      y = f_train_vectors[1]
+      w = self.PerceptronClassifier.train(X, y, learning_rate=0.01, num_epochs=100)
+      print('weight:', w)
 
-        weight_docfreq_map[class_name] = [w, doc_freq_map]
-        print('=== FINISHED TRAINING MODEL FOR CLASS %s ===\n\n\n' % class_name)
+      weight_docfreq_map[class_name] = w
+      print('=== FINISHED TRAINING MODEL FOR CLASS %s ===\n\n\n' % class_name)
+
+    self.save_models([weight_docfreq_map, doc_freq_map])
 
   def validate(self):
     print("[TextClassifier] Validating perceptron classifier...")
@@ -50,30 +53,31 @@ class TextClassifier():
     class_names = self.DataPrepper.class_names
 
     # Setup feature vectors for corpus
-    feature_vectors_classes = self.DataPrepper.run()
+    feature_vectors_classes_docfreq = self.DataPrepper.run()
+    feature_vectors_classes = feature_vectors_classes_docfreq[0]
+    doc_freq_map = feature_vectors_classes[1]
 
     # For all classes in class_names, train a perceptron
     for class_name in class_names:
-      if class_name == 'c1':
-        f_vectors_mixed = self.setup_feature_vectors(class_name, feature_vectors_classes)
-        f_train_test_vectors = self.setup_feature_vectors_split(f_vectors_mixed[0], f_vectors_mixed[1], 200)
-        f_train_vectors = f_train_test_vectors[0]
-        f_test_vectors = f_train_test_vectors[1]
-        X_train = f_train_vectors[0]
-        y_train = f_train_vectors[1]
-        X_test = f_test_vectors[0]
-        y_test = f_test_vectors[1]
+      f_vectors_mixed = self.setup_feature_vectors(class_name, feature_vectors_classes)
+      f_train_test_vectors = self.setup_feature_vectors_split(f_vectors_mixed[0], f_vectors_mixed[1], 200)
+      f_train_vectors = f_train_test_vectors[0]
+      f_test_vectors = f_train_test_vectors[1]
+      X_train = f_train_vectors[0]
+      y_train = f_train_vectors[1]
+      X_test = f_test_vectors[0]
+      y_test = f_test_vectors[1]
 
-        print("Sample sizes - Train: %d samples, Test: %d samples" % (len(X_train), len(X_test)))
-        w = self.PerceptronClassifier.train(X_train, y_train, learning_rate=0.01, num_epochs=70)
-        acc = self.PerceptronClassifier.batch_classify_with_acc(w, X_test, y_test, debug_mode=False)
-        print('weight:', w)
-        print('Accuracy:', acc)
-        print('=== FINISHED VALIDATING MODEL FOR CLASS %s ===\n\n\n' % class_name)
+      print("Sample sizes - Train: %d samples, Test: %d samples" % (len(X_train), len(X_test)))
+      w = self.PerceptronClassifier.train(X_train, y_train, learning_rate=0.01, num_epochs=100)
+      acc = self.PerceptronClassifier.batch_classify_with_acc(w, X_test, y_test, debug_mode=False)
+      print('weight:', w)
+      print('Accuracy:', acc)
+      print('=== FINISHED VALIDATING MODEL FOR CLASS %s ===\n\n\n' % class_name)
 
-  def save_models(self, weight_docfreq_map):
+  def save_models(self, models_df):
     print("[TextClassifier] Saving model to disk...")
-    pickle.dump(weight_docfreq_map, open(PATH_TO_MODEL, 'wb'))
+    pickle.dump(models_df, open(PATH_TO_MODEL, 'wb'))
 
   """
   Sets feature_vectors into the correct shape, with its true y classification
@@ -146,8 +150,7 @@ print("PATH_TO_STOP_WORDS:", PATH_TO_STOP_WORDS,
       ", PATH_TO_TRAIN_CLASS_LIST:", PATH_TO_TRAIN_CLASS_LIST,
       ", PATH_TO_MODEL", PATH_TO_MODEL)
 
-model = TextClassifier()
-model.validate()
+TextClassifier().build()
 
 # pickle.dump(model, open(PATH_TO_MODEL, 'wb'))
 print("=== FINISHED TRAINING...MODEL SAVED IN " + PATH_TO_MODEL + " ===")
