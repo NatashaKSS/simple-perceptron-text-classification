@@ -43,13 +43,16 @@ class DataPrepper():
     doc_df_pair = self.tokenize_dataset(dataset)
     docs = doc_df_pair[0]
     doc_freq = doc_df_pair[1]
-    doc_freq = self.cull_doc_freq(doc_freq, 70)
+    doc_freq = self.cull_doc_freq(doc_freq, 50)
     print("Number of words in vocab:", len(doc_freq.keys()))
 
     print("[DataPrepper] Setting up feature vectors...")
     feature_vectors_class = self.setup_tfidf_vectors(docs, doc_freq)
     print(feature_vectors_class[0])
-    print(feature_vectors_class[1])
+    print(feature_vectors_class[501])
+    print(feature_vectors_class[1101])
+    print(feature_vectors_class[1601])
+    print(feature_vectors_class[2051])
     return [feature_vectors_class, doc_freq]
 
   def run_test(self, doc_freq):
@@ -127,7 +130,7 @@ class DataPrepper():
           log_tf = (1 + log(tf)) if tf > 0 else 0.0
           log_idf = log(N_DOCNAMES / len(doc_freq_map[token]))
           w = log_tf * log_idf
-          f_vector[vocab.index(token)] = w
+          f_vector[vocab.index(token)] = tf
 
       f_vectors_classname.append([f_vector, class_name])
 
