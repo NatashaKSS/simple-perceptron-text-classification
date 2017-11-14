@@ -1,7 +1,7 @@
 # Import standard modules
 import sys
 import pickle
-from DataPrepperNEW import DataPrepper
+from DataPrepper import DataPrepper
 from PerceptronClassifier import PerceptronClassifier
 
 #===========================================================================#
@@ -40,7 +40,7 @@ class TextClassifier():
       f_train_vectors = self.setup_feature_vectors(class_name, feature_vectors_classes)
       X = f_train_vectors[0]
       y = f_train_vectors[1]
-      w = self.PerceptronClassifier.train(X, y, learning_rate=0.01, num_epochs=100)
+      w = self.PerceptronClassifier.train(X, y, learning_rate=0.1, num_epochs=150)
       print('weight:', w)
 
       weight_docfreq_map[class_name] = w
@@ -71,7 +71,7 @@ class TextClassifier():
       y_test = f_test_vectors[1]
 
       print("Sample sizes - Train: %d samples, Test: %d samples" % (len(X_train), len(X_test)))
-      w = self.PerceptronClassifier.train(X_train, y_train, learning_rate=0.01, num_epochs=100)
+      w = self.PerceptronClassifier.train(X_train, y_train, learning_rate=1.0, num_epochs=100)
       acc = self.PerceptronClassifier.batch_classify_with_acc(w, X_test, y_test, debug_mode=False)
       print('weight:', w)
       print('Accuracy:', acc)

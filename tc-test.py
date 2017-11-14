@@ -1,7 +1,8 @@
 # Import standard modules
 import sys
 import pickle
-from DataPrepperNEW import DataPrepper
+import numpy as np
+from DataPrepper import DataPrepper
 from PerceptronClassifier import PerceptronClassifier
 
 #===================================================================#
@@ -11,6 +12,9 @@ from PerceptronClassifier import PerceptronClassifier
 #
 # Run with command:
 #   python3 tc-test.py stopword-list model test-list test-class-list
+#
+# test-class-list is where we store the results of our classification
+# test-list is where we take in the paths to the documents we want to classify
 #===================================================================#
 class TCTest():
   def __init__(self):
@@ -52,19 +56,15 @@ class TCTest():
 
     score_so_far = 0
     best_class_so_far = class_names[0]
+    scores = []
     for class_name in self.models.keys():
-      score = self.dot_product(self.models[class_name], f_vector)
+      score = np.dot(self.models[class_name], f_vector)
+      scores.append([class_name, score])
       if score > score_so_far:
         score_so_far = score
         best_class_so_far = class_name
-
+    print(list(reversed(sorted(scores, key=lambda x: x[1]))))
     return best_class_so_far
-
-  def dot_product(self, X, Y):
-    result = 0
-    for i in range(len(X)):
-      result += X[i] * Y[i]
-    return result
 
   def load_models_df(self):
     return pickle.load(open(PATH_TO_MODEL, 'rb'))

@@ -11,7 +11,10 @@ from Tokenizer import Tokenizer
 # given in test-list.
 #
 # Run with command:
-#   python3 tc-crossvalidation.py stopword-list train-class-list test-class-list
+#   python3 tc-crossvalidation.py stopword-list true-class-list path-to-predicted
+#
+# true-class-list is where we have the filepaths and their true classes
+# path-to-predicted is where we have the filepaths and their predicted classes
 #===================================================================#
 class TCCrossValidation():
   def __init__(self):
