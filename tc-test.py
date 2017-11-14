@@ -53,7 +53,6 @@ class TCTest():
     score_so_far = 0
     best_class_so_far = class_names[0]
     for class_name in self.models.keys():
-      print(class_name, len(self.models[class_name]), len(f_vector), 'f_ve')
       score = self.dot_product(self.models[class_name], f_vector)
       if score > score_so_far:
         score_so_far = score
@@ -63,7 +62,6 @@ class TCTest():
 
   def dot_product(self, X, Y):
     result = 0
-    print(len(X), len(Y))
     for i in range(len(X)):
       result += X[i] * Y[i]
     return result
@@ -73,7 +71,7 @@ class TCTest():
 
   def output(self, filepaths, y_predict):
     print("[TextClassifier] Saving output to", PATH_TO_TEST_CLASS_LIST)
-    with open(PATH_TO_TEST_CLASS_LIST, 'a') as f:
+    with open(PATH_TO_TEST_CLASS_LIST, 'w') as f:
       for i in range(len(y_predict)):
         f.write(filepaths[i] + ' ' + y_predict[i] + '\n')
 

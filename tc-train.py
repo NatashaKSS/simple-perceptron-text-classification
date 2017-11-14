@@ -31,6 +31,8 @@ class TextClassifier():
     # Setup feature vectors for corpus
     feature_vectors_classes_docfreq = self.DataPrepper.run()
     feature_vectors_classes = feature_vectors_classes_docfreq[0]
+    self.insert_bias(feature_vectors_classes)
+    print('Dim of feature vector:', len(feature_vectors_classes[0][0]))
     doc_freq_map = feature_vectors_classes_docfreq[1]
 
     # For all classes in class_names, train a perceptron
@@ -79,6 +81,10 @@ class TextClassifier():
     print("[TextClassifier] Saving model to disk...")
     pickle.dump(models_df, open(PATH_TO_MODEL, 'wb'))
 
+  def insert_bias(self, f_vectors_classnames):
+    for f_vector_classname in f_vectors_classnames:
+      f_vector_classname[0].insert(0, 1.0)
+
   """
   Sets feature_vectors into the correct shape, with its true y classification
   appended to the back of the feature vector's list
@@ -99,8 +105,7 @@ class TextClassifier():
       f_vector = f_vector_classname[0]
       y_true = f_vector_classname[1]
 
-      # Insert bias term
-      f_vector.insert(0, 1.0)
+      # Separate the feature vector from its labelled class_name
       result_f_vectors.append(f_vector)
 
       # Re-mapping classnames to positive or negative classes
