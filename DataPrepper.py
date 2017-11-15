@@ -43,8 +43,8 @@ class DataPrepper():
     doc_df_pair = self.tokenize_dataset(dataset)
     docs = doc_df_pair[0]
     doc_freq = doc_df_pair[1]
-    doc_freq = self.cull_doc_freq(doc_freq, 50)
-    print("Number of words in vocab:", len(doc_freq.keys()))
+    doc_freq = self.cull_doc_freq(doc_freq, 50, len(doc_freq.keys()))
+    print("Number of words in vocab:", len(doc_freq.keys()), doc_freq.keys())
 
     print("[DataPrepper] Setting up feature vectors...")
     feature_vectors_class = self.setup_tfidf_vectors(docs, doc_freq)
@@ -64,8 +64,10 @@ class DataPrepper():
     doc_df_pair = self.tokenize_dataset(dataset_filepath)
     docs = doc_df_pair[0]
     doc_freq_testset = doc_df_pair[1]
-    f_vectors_filepath = self.setup_tfidf_vectors_for_test(docs, doc_freq, doc_freq_testset, test_mode=True)
-
+    f_vectors_filepath = self.setup_tfidf_vectors(docs, doc_freq, doc_freq_map_testset=doc_freq_testset, test_mode=True)
+    print(f_vectors_filepath[0])
+    print(f_vectors_filepath[20])
+    print(f_vectors_filepath[45])
     return f_vectors_filepath
 
   #===========================================================================#
@@ -105,7 +107,7 @@ class DataPrepper():
   Returns [[f_vector1, class_name], [f_vector2, class_name] ...].
   class_name is path to text doc represented by feature vector if test_mode=True
   """
-  def setup_tfidf_vectors(self, dict_class_documents, doc_freq_map, test_mode=False):
+  def setup_tfidf_vectors(self, dict_class_documents, doc_freq_map, doc_freq_map_testset=None, test_mode=False):
     vocab = list(doc_freq_map.keys())
     doc_names = dict_class_documents.keys()
     N_VOCAB = len(vocab)
@@ -122,7 +124,12 @@ class DataPrepper():
         if token in vocab:
           tf = doc.count(token)
           log_tf = (1 + log(tf)) if tf > 0 else 0.0
-          log_idf = log(N_DOCNAMES / len(doc_freq_map[token]))
+
+          if test_mode and doc_freq_map_testset:
+            log_idf = log(N_DOCNAMES / len(doc_freq_map_testset[token]))
+          else:
+            log_idf = log(N_DOCNAMES / len(doc_freq_map[token]))
+
           w = log_tf * log_idf
           f_vector[vocab.index(token)] = w
 
@@ -132,38 +139,11 @@ class DataPrepper():
 
     return f_vectors_classname
 
-  def setup_tfidf_vectors_for_test(self, dict_class_documents, doc_freq_map, doc_freq_map_testset, test_mode=False):
-    vocab = list(doc_freq_map.keys())
-    doc_names = dict_class_documents.keys()
-    N_VOCAB = len(vocab)
-    N_DOCNAMES = len(doc_names)
-    f_vectors_classname = []
-
-    self.print_loading_bar(0, N_DOCNAMES, progress_text='Setting up feature vectors:', complete_text='Complete')
-    for i, doc_name in enumerate(doc_names):
-      doc = dict_class_documents[doc_name][0]
-      class_name = dict_class_documents[doc_name][1]
-      f_vector = [0] * N_VOCAB
-
-      for token in doc:
-        if token in vocab:
-          tf = doc.count(token)
-          log_tf = (1 + log(tf)) if tf > 0 else 0.0
-          log_idf = log(N_DOCNAMES / len(doc_freq_map_testset[token]))
-          w = log_tf * log_idf
-          f_vector[vocab.index(token)] = w
-
-      f_vectors_classname.append([f_vector, class_name])
-
-      self.print_loading_bar(i + 1, N_DOCNAMES, progress_text='Setting up feature vectors:', complete_text='Complete')
-
-    return f_vectors_classname
-
-
-  def cull_doc_freq(self, doc_freq_map, threshold_num_docs):
+  def cull_doc_freq(self, doc_freq_map, low_num_docs, high_num_docs):
     culled_df_map = {}
     for word in doc_freq_map.keys():
-      if len(doc_freq_map[word]) > threshold_num_docs:
+      num_occurrences = len(doc_freq_map[word])
+      if num_occurrences < high_num_docs and num_occurrences > low_num_docs:
         culled_df_map[word] = doc_freq_map[word]
     return culled_df_map
 
