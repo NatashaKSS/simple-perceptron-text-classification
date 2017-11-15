@@ -91,9 +91,9 @@ class DataPrepper():
         if not tokens_processed_before.get(token): # unique tokens in a doc
           tokens_processed_before[token] = True # processed before, so mark as True
           if not doc_freq_map.get(token):   # if token is newly found, initialize
-            doc_freq_map[token] = [doc_name]
+            doc_freq_map[token] = 1
           else:
-            doc_freq_map[token].append(doc_name) # since the word appears in this doc
+            doc_freq_map[token] += 1 # since the word appears in this doc
 
       self.print_loading_bar(i + 1, N_DOCS, progress_text='Tokenizing: ', complete_text='Complete')
 
@@ -126,9 +126,9 @@ class DataPrepper():
           log_tf = (1 + log(tf)) if tf > 0 else 0.0
 
           if test_mode and doc_freq_map_testset:
-            log_idf = log(N_DOCNAMES / len(doc_freq_map_testset[token]))
+            log_idf = log(N_DOCNAMES / doc_freq_map_testset[token])
           else:
-            log_idf = log(N_DOCNAMES / len(doc_freq_map[token]))
+            log_idf = log(N_DOCNAMES / doc_freq_map[token])
 
           w = log_tf * log_idf
           f_vector[vocab.index(token)] = w
@@ -142,7 +142,7 @@ class DataPrepper():
   def cull_doc_freq(self, doc_freq_map, low_num_docs, high_num_docs):
     culled_df_map = {}
     for word in doc_freq_map.keys():
-      num_occurrences = len(doc_freq_map[word])
+      num_occurrences = doc_freq_map[word]
       if num_occurrences < high_num_docs and num_occurrences > low_num_docs:
         culled_df_map[word] = doc_freq_map[word]
     return culled_df_map
