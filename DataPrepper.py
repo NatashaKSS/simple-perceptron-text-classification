@@ -43,7 +43,7 @@ class DataPrepper():
     doc_df_pair = self.tokenize_dataset(dataset)
     docs = doc_df_pair[0]
     doc_freq = doc_df_pair[1]
-    doc_freq = self.cull_doc_freq(doc_freq, 50, len(doc_freq.keys()))
+    doc_freq = self.cull_doc_freq(doc_freq, 35, len(doc_freq.keys()))
     print("Number of words in vocab:", len(doc_freq.keys()), doc_freq.keys())
 
     print("[DataPrepper] Setting up feature vectors...")
@@ -81,21 +81,21 @@ class DataPrepper():
     docs = dict_class_documents.keys()
     N_DOCS = len(docs)
 
-    self.print_loading_bar(0, N_DOCS, progress_text='Tokenizing:', complete_text='Complete')
+    self.print_loading_bar(0, N_DOCS, progress_text='Tokenizing: ', complete_text='Complete')
     for i, doc_name in enumerate(docs):
       dict_class_documents[doc_name][0] = self.Tokenizer.tokenize(dict_class_documents[doc_name][0])
 
       # Construct doc freq map on-the-fly
-      tokens_processed_before = []
+      tokens_processed_before = {}
       for token in dict_class_documents[doc_name][0]:
-        if token not in tokens_processed_before: # unique tokens in a doc
-          tokens_processed_before.append(token)
-          if token not in doc_freq_map.keys():   # if token is newly found, initialize
+        if not tokens_processed_before.get(token): # unique tokens in a doc
+          tokens_processed_before[token] = True # processed before, so mark as True
+          if not doc_freq_map.get(token):   # if token is newly found, initialize
             doc_freq_map[token] = [doc_name]
           else:
             doc_freq_map[token].append(doc_name) # since the word appears in this doc
 
-      self.print_loading_bar(i + 1, N_DOCS, progress_text='Tokenizing:', complete_text='Complete')
+      self.print_loading_bar(i + 1, N_DOCS, progress_text='Tokenizing: ', complete_text='Complete')
 
     return [dict_class_documents, doc_freq_map]
 
@@ -121,7 +121,7 @@ class DataPrepper():
       f_vector = [0] * N_VOCAB
 
       for token in doc:
-        if token in vocab:
+        if doc_freq_map.get(token):
           tf = doc.count(token)
           log_tf = (1 + log(tf)) if tf > 0 else 0.0
 
@@ -146,6 +146,52 @@ class DataPrepper():
       if num_occurrences < high_num_docs and num_occurrences > low_num_docs:
         culled_df_map[word] = doc_freq_map[word]
     return culled_df_map
+
+  def get_chisq_vocab(self, data_pos_vocab, data_neg_vocab, docs_pos, docs_neg, threshold):
+    combined_vocabs = self.union_vocabs(data_pos_vocab, data_neg_vocab)
+    N_pos_docs = len(docs_pos.keys())
+    N_neg_docs = len(docs_neg.keys())
+
+    feature_selected_vocab = []
+    for word in (combined_vocabs):
+      N_pos_docs_containing_word = self.get_num_contains_word(docs_pos, word)
+      N_pos_docs_not_containing_word = N_pos_docs - N_pos_docs_containing_word
+
+      N_neg_docs_containing_word = self.get_num_contains_word(docs_neg, word)
+      N_neg_docs_not_containing_word = N_neg_docs - N_neg_docs_containing_word
+
+      # no. of training docs that:
+      N_00 = N_neg_docs_not_containing_word  #  in negative class, do not contain w
+      N_01 = N_pos_docs_not_containing_word  #  in positive class, do not contain w
+      N_10 = N_neg_docs_containing_word      #  in negative class,        contain w
+      N_11 = N_pos_docs_containing_word      #  in positive class,        contain w
+
+      chisq = 0
+      if not (N_00 == 0 and N_01 == 0):
+        chisq = ((N_11 + N_10 + N_01 + N_00) * pow(N_11 * N_00 - N_10 * N_01, 2)) / \
+                ((N_11 + N_01) * (N_11 + N_10) * (N_10 + N_00) * (N_01 + N_00))
+
+      if chisq > threshold:
+        feature_selected_vocab.append(word)
+
+    return feature_selected_vocab
+
+  def get_num_contains_word(self, df, word):
+    docs_containing_word = []
+    for doc_name in df.keys():
+      if word in df[doc_name]:
+        docs_containing_word.append(doc_name)
+    return len(docs_containing_word)
+
+  def union_vocabs(self, vocab_1, vocab_2):
+    unioned_vocab = []
+    for word in vocab_1:
+      if word not in unioned_vocab:
+        unioned_vocab.append(word)
+    for word in vocab_2:
+      if word not in unioned_vocab:
+        unioned_vocab.append(word)
+    return unioned_vocab
 
   #===========================================================================#
   # CONSTRUCT THE DATASET

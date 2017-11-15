@@ -28,7 +28,7 @@ class PerceptronClassifier():
         # Update weights
         w += np.multiply(update, x)
 
-      if n_errors <= 0:
+      if n_errors <= 1: # 1 is enough to stop
         break;
 
       print('epoch=%d, error=%.d' % (epoch + 1, n_errors))
