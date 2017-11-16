@@ -25,6 +25,7 @@ class DataPrepper():
     else:
       # F.P.C means filename_path_classnames
       self.fpc = self.load_paths_to_training_text()
+      self.total_num_classes = len(self.fpc)
       self.class_counts = self.get_class_counts()
       self.class_names = list(self.class_counts.keys())
 
@@ -36,7 +37,6 @@ class DataPrepper():
   """
   def run(self):
     print("[DataPrepper] Running on training set...")
-
     print("[DataPrepper] Sampling texts from disk...")
     dataset = self.sample_texts()
 
@@ -50,13 +50,6 @@ class DataPrepper():
     print("[DataPrepper] Setting up feature vectors...")
     feature_vectors_class = self.setup_tfidf_vectors(docs, doc_freq)
 
-    # Debug
-    print(feature_vectors_class[0])
-    print(feature_vectors_class[501])
-    print(feature_vectors_class[1101])
-    print(feature_vectors_class[1601])
-    print(feature_vectors_class[2051])
-
     return [feature_vectors_class, doc_freq]
 
   def run_test(self, doc_freq):
@@ -66,9 +59,7 @@ class DataPrepper():
     docs = doc_df_pair[0]
     doc_freq_testset = doc_df_pair[1]
     f_vectors_filepath = self.setup_tfidf_vectors(docs, doc_freq, doc_freq_map_testset=doc_freq_testset, test_mode=True)
-    print(f_vectors_filepath[0])
-    print(f_vectors_filepath[20])
-    print(f_vectors_filepath[45])
+
     return f_vectors_filepath
 
   #===========================================================================#
@@ -187,7 +178,7 @@ class DataPrepper():
 
   def cull_low_chisq_doc_freq(self, doc_freq_map, min_chisq):
     print('Culling low chisq...')
-    N_total = self.class_counts['total']
+    N_total = self.total_num_classes
     N_classes = len(self.class_names)
 
     culled_df_map = {}
@@ -300,7 +291,6 @@ class DataPrepper():
         result[candidate_class_name] = 1
       else:
         result[candidate_class_name] += 1
-    result['total'] = len(self.fpc)
     return result
 
   """
