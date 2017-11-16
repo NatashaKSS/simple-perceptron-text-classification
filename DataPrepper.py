@@ -95,12 +95,16 @@ class DataPrepper():
         if not tokens_processed_before.get(token): # unique tokens in a doc
           tokens_processed_before[token] = True # processed before, so mark as True
           if not doc_freq_map.get(token): # if token is newly found, initialize
+            # Initialize token's doc freqs
             doc_freq_map[token] = {
               'count': 1,
               'class-specific': {}
             }
+
+            # Initialize class-specific doc freq
             for c in self.class_names:
-              doc_freq_map[token]['class-specific'][c] = 1
+              doc_freq_map[token]['class-specific'][c] = 0
+            doc_freq_map[token]['class-specific'][class_name] = 1
 
           else:
             doc_freq_map[token]['count'] += 1 # since the word appears in this doc
