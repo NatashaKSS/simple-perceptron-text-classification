@@ -359,7 +359,7 @@ class DataPrepper():
     percentage = (chunk / N) * 100
     percentage_int = int(percentage)
     percentage_decimal = str(percentage - percentage_int)[2]
-    bar = '█' * percentage_int + '-' * (100 - percentage_int)
+    bar = '|' * percentage_int + '-' * (100 - percentage_int)
     print('\r%s |%s| %s.%s%% %s' % (progress_text, bar, percentage_int, percentage_decimal, complete_text), end = '\r')
 
     if percentage >= 100.0:
