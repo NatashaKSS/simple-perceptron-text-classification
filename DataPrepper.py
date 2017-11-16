@@ -43,8 +43,10 @@ class DataPrepper():
     doc_df_pair = self.tokenize_dataset(dataset)
     docs = doc_df_pair[0]
     doc_freq = doc_df_pair[1]
-    doc_freq = self.cull_doc_freq(doc_freq, 35, len(doc_freq.keys()))
-    print("Number of words in vocab:", len(doc_freq.keys()), doc_freq.keys())
+    print('realiti', doc_freq['realiti']['count'], doc_freq['realiti']['class-specific'])
+    print('hell', doc_freq['hell']['count'], doc_freq['hell']['class-specific'])
+    # doc_freq = self.cull_doc_freq(doc_freq, 1, len(doc_freq.keys()))
+    # print("Number of words in vocab:", len(doc_freq.keys()), doc_freq.keys())
 
     print("[DataPrepper] Setting up feature vectors...")
     feature_vectors_class = self.setup_tfidf_vectors(docs, doc_freq)
@@ -61,7 +63,7 @@ class DataPrepper():
   def run_test(self, doc_freq):
     print("[DataPrepper] Running on testset...")
     dataset_filepath = self.sample_texts_for_test()
-    doc_df_pair = self.tokenize_dataset(dataset_filepath)
+    doc_df_pair = self.tokenize_dataset_for_test(dataset_filepath)
     docs = doc_df_pair[0]
     doc_freq_testset = doc_df_pair[1]
     f_vectors_filepath = self.setup_tfidf_vectors(docs, doc_freq, doc_freq_map_testset=doc_freq_testset, test_mode=True)
@@ -77,6 +79,38 @@ class DataPrepper():
   # ALSO CONSTRUCTS VOCABULARY / DOC FREQ MAP ON-THE-FLY
   #===========================================================================#
   def tokenize_dataset(self, dict_class_documents):
+    doc_freq_map = {}
+    class_df_map = {}
+    docs = dict_class_documents.keys()
+    N_DOCS = len(docs)
+
+    self.print_loading_bar(0, N_DOCS, progress_text='Tokenizing: ', complete_text='Complete')
+    for i, doc_name in enumerate(docs):
+      dict_class_documents[doc_name][0] = self.Tokenizer.tokenize(dict_class_documents[doc_name][0])
+      class_name = dict_class_documents[doc_name][1]
+
+      # Construct doc freq map on-the-fly
+      tokens_processed_before = {}
+      for token in dict_class_documents[doc_name][0]:
+        if not tokens_processed_before.get(token): # unique tokens in a doc
+          tokens_processed_before[token] = True # processed before, so mark as True
+          if not doc_freq_map.get(token): # if token is newly found, initialize
+            doc_freq_map[token] = {
+              'count': 1,
+              'class-specific': {}
+            }
+            for c in self.class_names:
+              doc_freq_map[token]['class-specific'][c] = 1
+
+          else:
+            doc_freq_map[token]['count'] += 1 # since the word appears in this doc
+            doc_freq_map[token]['class-specific'][class_name] += 1
+
+      self.print_loading_bar(i + 1, N_DOCS, progress_text='Tokenizing: ', complete_text='Complete')
+
+    return [dict_class_documents, doc_freq_map]
+
+  def tokenize_dataset_for_test(self, dict_class_documents):
     doc_freq_map = {}
     docs = dict_class_documents.keys()
     N_DOCS = len(docs)
@@ -98,6 +132,7 @@ class DataPrepper():
       self.print_loading_bar(i + 1, N_DOCS, progress_text='Tokenizing: ', complete_text='Complete')
 
     return [dict_class_documents, doc_freq_map]
+
 
   #===========================================================================#
   # TF-IDF VECTORIZATION
@@ -142,7 +177,7 @@ class DataPrepper():
   def cull_doc_freq(self, doc_freq_map, low_num_docs, high_num_docs):
     culled_df_map = {}
     for word in doc_freq_map.keys():
-      num_occurrences = doc_freq_map[word]
+      num_occurrences = doc_freq_map[word]['count']
       if num_occurrences < high_num_docs and num_occurrences > low_num_docs:
         culled_df_map[word] = doc_freq_map[word]
     return culled_df_map
