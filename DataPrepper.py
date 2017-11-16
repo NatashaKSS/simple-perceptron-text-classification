@@ -25,7 +25,8 @@ class DataPrepper():
     else:
       # F.P.C means filename_path_classnames
       self.fpc = self.load_paths_to_training_text()
-      self.class_names = self.get_class_names()
+      self.class_counts = self.get_class_counts()
+      self.class_names = list(self.class_counts.keys())
 
     print("[DataPrepper] Instantiated!")
 
@@ -43,20 +44,18 @@ class DataPrepper():
     doc_df_pair = self.tokenize_dataset(dataset)
     docs = doc_df_pair[0]
     doc_freq = doc_df_pair[1]
-    print('realiti', doc_freq['realiti']['count'], doc_freq['realiti']['class-specific'])
-    print('hell', doc_freq['hell']['count'], doc_freq['hell']['class-specific'])
-    # doc_freq = self.cull_doc_freq(doc_freq, 1, len(doc_freq.keys()))
-    # print("Number of words in vocab:", len(doc_freq.keys()), doc_freq.keys())
-
+    doc_freq = self.cull_doc_freq(doc_freq, 5, len(doc_freq.keys()))
+    doc_freq = self.cull_low_chisq_doc_freq(doc_freq, 4)
+    print("Number of words in vocab:", len(doc_freq.keys()))
     print("[DataPrepper] Setting up feature vectors...")
     feature_vectors_class = self.setup_tfidf_vectors(docs, doc_freq)
 
     # Debug
-    # print(feature_vectors_class[0])
-    # print(feature_vectors_class[501])
-    # print(feature_vectors_class[1101])
-    # print(feature_vectors_class[1601])
-    # print(feature_vectors_class[2051])
+    print(feature_vectors_class[0])
+    print(feature_vectors_class[501])
+    print(feature_vectors_class[1101])
+    print(feature_vectors_class[1601])
+    print(feature_vectors_class[2051])
 
     return [feature_vectors_class, doc_freq]
 
@@ -167,7 +166,7 @@ class DataPrepper():
           if test_mode and doc_freq_map_testset:
             log_idf = log(N_DOCNAMES / doc_freq_map_testset[token])
           else:
-            log_idf = log(N_DOCNAMES / doc_freq_map[token])
+            log_idf = log(N_DOCNAMES / doc_freq_map[token]['count'])
 
           w = log_tf * log_idf
           f_vector[vocab.index(token)] = w
@@ -180,57 +179,63 @@ class DataPrepper():
 
   def cull_doc_freq(self, doc_freq_map, low_num_docs, high_num_docs):
     culled_df_map = {}
-    for word in doc_freq_map.keys():
+    for word in doc_freq_map:
       num_occurrences = doc_freq_map[word]['count']
       if num_occurrences < high_num_docs and num_occurrences > low_num_docs:
         culled_df_map[word] = doc_freq_map[word]
     return culled_df_map
 
-  def get_chisq_vocab(self, data_pos_vocab, data_neg_vocab, docs_pos, docs_neg, threshold):
-    combined_vocabs = self.union_vocabs(data_pos_vocab, data_neg_vocab)
-    N_pos_docs = len(docs_pos.keys())
-    N_neg_docs = len(docs_neg.keys())
+  def cull_low_chisq_doc_freq(self, doc_freq_map, min_chisq):
+    print('Culling low chisq...')
+    N_total = self.class_counts['total']
+    N_classes = len(self.class_names)
 
-    feature_selected_vocab = []
-    for word in (combined_vocabs):
-      N_pos_docs_containing_word = self.get_num_contains_word(docs_pos, word)
-      N_pos_docs_not_containing_word = N_pos_docs - N_pos_docs_containing_word
+    culled_df_map = {}
 
-      N_neg_docs_containing_word = self.get_num_contains_word(docs_neg, word)
-      N_neg_docs_not_containing_word = N_neg_docs - N_neg_docs_containing_word
+    for token in doc_freq_map:
+      chisq_score = 0
 
-      # no. of training docs that:
-      N_00 = N_neg_docs_not_containing_word  #  in negative class, do not contain w
-      N_01 = N_pos_docs_not_containing_word  #  in positive class, do not contain w
-      N_10 = N_neg_docs_containing_word      #  in negative class,        contain w
-      N_11 = N_pos_docs_containing_word      #  in positive class,        contain w
+      for pos_class_name in self.class_names:
+        # Num of docs in positive class and not in positive class
+        N_docs_pos_c = self.class_counts[pos_class_name]
+        N_docs_not_in_pos_c = N_total - N_docs_pos_c
 
-      chisq = 0
-      if not (N_00 == 0 and N_01 == 0):
-        chisq = ((N_11 + N_10 + N_01 + N_00) * pow(N_11 * N_00 - N_10 * N_01, 2)) / \
-                ((N_11 + N_01) * (N_11 + N_10) * (N_10 + N_00) * (N_01 + N_00))
+        # N00 is the number of training texts that do not contain w and are not in class c.
+        # N01 is the number of training texts that do not contain w and are in class c.
+        # N10 is the number of training texts that contain w and are not in class c.
+        # N11 is the number of training texts that contain w and are in class c.
+        N_11 = doc_freq_map[token]['class-specific'][pos_class_name]
+        N_01 = N_docs_pos_c - N_11
+        N_10 = self.sum_neg_doc_freq(pos_class_name, doc_freq_map[token]['class-specific'])
+        N_00 = N_docs_not_in_pos_c - N_10
 
-      if chisq > threshold:
-        feature_selected_vocab.append(word)
+        if  (N_11 > 0 and N_01 > 0) and \
+            (N_11 > 0 and N_10 > 0) and \
+            (N_10 > 0 and N_00 > 0) and \
+            (N_01 > 0 and N_00 > 0):
+          chisq_score += \
+            ((N_11 + N_10 + N_01 + N_00) * pow(N_11 * N_00 - N_10 * N_01, 2)) / \
+            ((N_11 + N_01) * (N_11 + N_10) * (N_10 + N_00) * (N_01 + N_00))
+        else:
+          chisq_score += 0
 
-    return feature_selected_vocab
+        #print(token, N_docs_pos_c, N_docs_not_in_pos_c, pos_class_name, N_00, N_01, N_10, N_11, doc_freq_map[token]['class-specific'])
+      #print(token, chisq_score / N_classes, doc_freq_map[token]['class-specific'])
 
-  def get_num_contains_word(self, df, word):
-    docs_containing_word = []
-    for doc_name in df.keys():
-      if word in df[doc_name]:
-        docs_containing_word.append(doc_name)
-    return len(docs_containing_word)
+      average_chisq = chisq_score / N_classes
 
-  def union_vocabs(self, vocab_1, vocab_2):
-    unioned_vocab = []
-    for word in vocab_1:
-      if word not in unioned_vocab:
-        unioned_vocab.append(word)
-    for word in vocab_2:
-      if word not in unioned_vocab:
-        unioned_vocab.append(word)
-    return unioned_vocab
+      # Only accept words into our vocab if their chisquared score is above threshold
+      if average_chisq > min_chisq:
+        culled_df_map[token] = doc_freq_map[token]
+
+    return culled_df_map
+
+  def sum_neg_doc_freq(self, pos_class_name, token_df):
+    sum = 0
+    for c in token_df:
+      if not c == pos_class_name:
+        sum += token_df[c]
+    return sum
 
   #===========================================================================#
   # CONSTRUCT THE DATASET
@@ -282,16 +287,20 @@ class DataPrepper():
     return filename_paths
 
   """
-  Gets the list of all the class names in our corpus
+  Gets counts of all docs in each class in our corpus
 
-  Returns a list of [String] class names
+  Returns a dictionary of class counts
   """
-  def get_class_names(self):
-    result = []
+  def get_class_counts(self):
+    result = {}
     for filename_path_classname in self.fpc:
       candidate_class_name = filename_path_classname[2]
+
       if candidate_class_name not in result:
-        result.append(candidate_class_name)
+        result[candidate_class_name] = 1
+      else:
+        result[candidate_class_name] += 1
+    result['total'] = len(self.fpc)
     return result
 
   """

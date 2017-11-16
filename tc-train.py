@@ -40,7 +40,7 @@ class TextClassifier():
       f_train_vectors = self.setup_feature_vectors(class_name, feature_vectors_classes)
       X = f_train_vectors[0]
       y = f_train_vectors[1]
-      w = self.PerceptronClassifier.train(X, y, learning_rate=0.02, num_epochs=40)
+      w = self.PerceptronClassifier.train(X, y, learning_rate=0.02, num_epochs=50)
       print('weight:', w)
 
       weight_docfreq_map[class_name] = w
