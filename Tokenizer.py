@@ -31,13 +31,12 @@ class Tokenizer():
 
     for token in input_str_list:
       result_tok = token.strip(PUNCTUATIONS)
-
-      if len(result_tok) > 0 and \
-         not self.is_stopword(result_tok) and \
+      if len(result_tok) > 1 and \
+         not self.is_stopword(result_tok.lower()) and \
          not self.isMixedNumeric(result_tok):
 
         result_tok = self.stem(result_tok)
-        result.append(result_tok)
+        result.append(result_tok.lower())
 
     return result
 
@@ -48,7 +47,7 @@ class Tokenizer():
     return list(filter(lambda tok: tok not in self.STOP_WORDS, tokens))
 
   def is_stopword(self, token):
-    return token in self.STOP_WORDS
+    return self.STOP_WORDS.get(token)
 
   #===========================================================================#
   # STRING MANIPULATION FUNCS
@@ -86,4 +85,9 @@ class Tokenizer():
   def load_stopwords(self):
     f = open(self.PATH_TO_STOP_WORDS, 'r')
     stopwords = f.read().splitlines()
-    return stopwords
+
+    stopword_dict = {}
+    for word in stopwords:
+      stopword_dict[word] = True
+
+    return stopword_dict

@@ -1,20 +1,33 @@
 # CS4248 Assignment 3 - Perceptron Text Classification
 Performs text classification using the Perceptron Learning Algorithm.
-This application is general enough to work on *any number of classes*, *any class names* 
+This application is general enough to work on *any number of classes*, *any class names*
 and *any number of training texts* within a class.
+
+### File Structure
+```
+.
+├── /stopword-list           # List of all stop words
+├── /porter.py               # Porter's Stemmer Algorithm
+├── /DataPrepper.py          # Handles the generation of feature vectors
+├── /Tokenizer.py            # Contains tokenizer functions for the dataset
+├── /tc-train.py             # Runs the training phase (tokenize, feature selection, training)
+├── /tc-test.py              # Tests a trained model on a set of blind test documents
+├── /tc-crossvalidation.py   # A simple script I made to help me perform cross-validation
+├── /tc-crossvalidation.py   # A simple script I made to help me perform cross-validation
+└── README.md
+```
 
 ### Data Preparation / Text Normalization
 * Stop word removal
 * Stemming using Porter's Stemmer
 * Case-folding -(tentative)-
 
-### Feature selection for dimensionaltiy reduction
+### Feature selection for dimensionality reduction
 *Rules:*
 * Select a stemmed word as a feature for a class `c` if it has high chi-squared value
-* Select a stemmed word with a high enough inverse document frequency -(tentative)-
 
 ### Perceptron Learning Step
-Note: This is a multi-class perceptron learner where 1 classifier is learned for each 
+Note: This is a multi-class perceptron learner where 1 classifier is learned for each
 class. Each text is assumed to belong to exactly one of the given classes.
 
 ### Instructions
@@ -22,7 +35,7 @@ class. Each text is assumed to belong to exactly one of the given classes.
 ```
 python tc-train.py stopword-list train-class-list model
 ```
-where `model` is the file where we will stored our learned perceptron weights. `stopword-list` is a file 
+where `model` is the file where we will stored our learned perceptron weights. `stopword-list` is a file
 containing a list of stop words. `train-class-list` is a file containing the following lines:
 ```
 /home/course/cs4248/tc/c1/37261 c1
@@ -36,8 +49,8 @@ containing a list of stop words. `train-class-list` is a file containing the fol
 ```
 python tc-test.py stopword-list model test-list test-class-list
 ```
-where `stopword-list` is the same file containing a list of stop words. `model` is the file of 
-weights learned during training. `test-list` is a file that contains a list of the locations 
+where `stopword-list` is the same file containing a list of stop words. `model` is the file of
+weights learned during training. `test-list` is a file that contains a list of the locations
 of test texts to be classified as such:
 ```
 /home/course/cs4248/tc/test/001
@@ -46,5 +59,3 @@ of test texts to be classified as such:
 ...
 ```
 and `test-class-list` is a file in the same format as `train-class-list`.
-
-

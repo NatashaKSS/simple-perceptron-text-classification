@@ -63,7 +63,7 @@ class TCTest():
       if score > score_so_far:
         score_so_far = score
         best_class_so_far = class_name
-    print(list(reversed(sorted(scores, key=lambda x: x[1]))))
+    # print(list(reversed(sorted(scores, key=lambda x: x[1]))))
     return best_class_so_far
 
   def load_models_df(self):

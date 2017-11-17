@@ -1,3 +1,4 @@
+import math
 import numpy as np
 
 #===========================================================================#
@@ -22,13 +23,13 @@ class PerceptronClassifier():
       for i in range(N_samples):
         x = X[i]
         y = y_true[i]
-        update = learning_rate * (y - self.classify(x, w, self.threshold_activation))
+        update = learning_rate * (y - self.classify(x, w, self.sigmoid_threshold_activation))
         n_errors += int(update != 0.0)
 
         # Update weights
         w += np.multiply(update, x)
 
-      if n_errors <= 0:
+      if n_errors <= 1: # 1 is enough to stop
         break;
 
       print('epoch=%d, error=%.d' % (epoch + 1, n_errors))
@@ -51,6 +52,23 @@ class PerceptronClassifier():
   """
   def threshold_activation(self, activation):
     return 1 if activation >= 0.0 else -1
+
+  """
+  Sigmoid activation function
+  """
+  def sigmoid_threshold_activation(self, gamma):
+    if gamma < 0:
+      sig = 1 - 1 / (1 + math.exp(gamma))
+    else:
+      sig = 1 / (1 + math.exp(-gamma))
+    return 1 if sig >= 0.5 else -1
+
+  """
+  Tanh activation function
+  """
+  def tanh_threshold_activation(self, gamma):
+    sig = np.tanh(gamma)
+    return 1 if sig >= 0.5 else -1
 
   #===========================================================================#
   # Classification Functions
